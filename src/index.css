@@ -30,6 +30,7 @@ body {
 /* Customscrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -43,6 +44,10 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+
+.scroll-smooth-touch {
+  -webkit-overflow-scrolling: touch;
 }
 
 .chart-container {

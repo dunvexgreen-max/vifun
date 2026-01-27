@@ -120,8 +120,8 @@ const Dashboard = ({ profile }) => {
 							<h2 className="text-xl font-black tracking-tight uppercase tracking-[0.1em]">Lệnh mới nhất</h2>
 							<button className="text-[9px] font-black text-primary uppercase tracking-[0.3em] bg-primary/5 px-5 py-2.5 rounded-2xl border border-primary/10 hover:bg-primary/10 transition-all active:scale-95">Xem chi tiết</button>
 						</div>
-						<div className="overflow-x-auto">
-							<table className="w-full text-left">
+						<div className="overflow-x-auto custom-scrollbar scroll-smooth-touch">
+							<table className="w-full text-left min-w-[600px]">
 								<thead>
 									<tr className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] border-b border-white/5">
 										<th className="pb-6 pl-2">Mã cổ phiếu</th>
