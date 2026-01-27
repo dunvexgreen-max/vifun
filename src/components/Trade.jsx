@@ -51,7 +51,7 @@ const Trade = ({ balance, refreshProfile }) => {
 		setMessage('');
 
 		const res = await api.call('placeOrder', {
-			email: localStorage.getItem('userEmail'),
+			email: sessionStorage.getItem('userEmail'),
 			symbol: symbol.trim().toUpperCase(),
 			quantity: Number(quantity),
 			type: type,

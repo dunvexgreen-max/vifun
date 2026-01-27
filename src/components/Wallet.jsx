@@ -13,7 +13,7 @@ const Wallet = ({ profile, refreshProfile }) => {
 	}, []);
 
 	const fetchHistory = async () => {
-		const res = await api.call('getHistory', { email: localStorage.getItem('userEmail') });
+		const res = await api.call('getHistory', { email: sessionStorage.getItem('userEmail') });
 		if (res && Array.isArray(res)) {
 			// Lọc các giao dịch nạp tiền
 			setHistory(res.filter(h => h.symbol === 'DEPOSIT'));
