@@ -1,0 +1,58 @@
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx9o6yLvNgHxWggQWaLLDYRRMXQRwROBqltr6fx4jgBzviByYGvaFHNOFKBgUfQMIV0cQ/exec';
+const isMock = !GAS_URL;
+const API_SECRET_KEY = 'STOCKS_SIM_SECURE_V1_2024_@SEC';
+
+export const api = {
+	async call(action, data = {}) {
+		if (isMock) return mockApi(action, data);
+
+		try {
+			const response = await fetch(GAS_URL, {
+				method: 'POST',
+				body: JSON.stringify({
+					apiKey: API_SECRET_KEY,
+					action,
+					...data
+				}),
+			});
+			return await response.json();
+		} catch (error) {
+			console.error('API Error:', error);
+			return { error: 'Connection failed' };
+		}
+	}
+};
+
+const mockApi = async (action, data) => {
+	await new Promise(r => setTimeout(r, 500));
+
+	const mockStocks = {
+		'HPG': { symbol: 'HPG', price: 28500, change: 450, pctChange: 1.6, high: 28700, low: 28100, volume: 15200000 },
+		'TCB': { symbol: 'TCB', price: 35200, change: -200, pctChange: -0.57, high: 35500, low: 34900, volume: 8400000 },
+		'VNM': { symbol: 'VNM', price: 68100, change: 100, pctChange: 0.15, high: 68500, low: 67900, volume: 3200000 },
+		'FPT': { symbol: 'FPT', price: 115000, change: 2100, pctChange: 1.86, high: 116000, low: 113000, volume: 2100000 },
+	};
+
+	switch (action) {
+		case 'getProfile':
+			return { email: 'demo@example.com', balance: 125450000, totalAssets: 158220000 };
+		case 'getHoldings':
+			return [
+				{ symbol: 'HPG', quantity: 1000, avgPrice: 27200 },
+				{ symbol: 'VNM', quantity: 500, avgPrice: 69500 },
+			];
+		case 'getHistory':
+			return [
+				{ date: new Date().toISOString(), symbol: 'HPG', side: 'BUY', type: 'LO', quantity: 1000, price: 27200, total: 27200000 },
+				{ date: new Date().toISOString(), symbol: 'VNM', side: 'BUY', type: 'MP', quantity: 500, price: 69500, total: 34750000 },
+			];
+		case 'getStockData':
+			return mockStocks[data.symbol.toUpperCase()] || { error: 'Not found' };
+		case 'placeOrder':
+			return { success: true, balance: 120000000 };
+		case 'deposit':
+			return { success: true, newBalance: 150000000 };
+		default:
+			return { error: 'Unknown action' };
+	}
+};

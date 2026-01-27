@@ -1,0 +1,192 @@
+import React, { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import Trade from './components/Trade';
+import Portfolio from './components/Portfolio';
+import History from './components/History';
+import Wallet from './components/Wallet';
+import Login from './components/Login';
+import { api } from './api';
+import { Search, Bell, User } from 'lucide-react';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [notifications, setNotifications] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState(sessionStorage.getItem('userEmail'));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const fetchProfile = async (email) => {
+    const data = await api.call('getProfile', { email: email || userEmail });
+    setProfile(data);
+    fetchNotifications(email || userEmail);
+    setLoading(false);
+  };
+
+  const fetchNotifications = async (email) => {
+    const res = await api.call('getNotifications', { email: email || userEmail });
+    if (res && Array.isArray(res)) setNotifications(res);
+  };
+
+  const handleMarkRead = async () => {
+    if (notifications.some(n => !n.isRead)) {
+      await api.call('markNotificationsRead', { email: userEmail });
+      fetchNotifications();
+    }
+    setShowNotif(!showNotif);
+  };
+
+  useEffect(() => {
+    if (userEmail) {
+      fetchProfile(userEmail);
+      // Polling notifications every 30s
+      const timer = setInterval(() => fetchNotifications(), 30000);
+      return () => clearInterval(timer);
+    } else {
+      setLoading(false);
+    }
+  }, [userEmail]);
+
+  const handleLogin = (email) => {
+    sessionStorage.setItem('userEmail', email);
+    setUserEmail(email);
+    setLoading(true);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('userEmail');
+    setProfile(null);
+    setUserEmail(null);
+  };
+
+  if (loading) return (
+    <div className="h-screen w-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-textSecondary font-medium animate-pulse">Đang kết nối hệ thống...</p>
+      </div>
+    </div>
+  );
+
+  if (!userEmail || !profile) return <Login onLogin={handleLogin} />;
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return <Dashboard profile={profile} />;
+      case 'trade': return <Trade balance={profile.balance} refreshProfile={fetchProfile} />;
+      case 'portfolio': return <Portfolio holdings={profile.holdings} refreshProfile={fetchProfile} />;
+      case 'history': return <History profile={profile} refreshProfile={fetchProfile} />;
+      case 'wallet': return <Wallet profile={profile} refreshProfile={fetchProfile} />;
+      default: return <Dashboard profile={profile} />;
+    }
+  };
+
+  const formatNotifDate = (d) => {
+    const date = new Date(d);
+    return date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0') + ' - ' + date.getDate() + '/' + (date.getMonth() + 1);
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-textPrimary flex overflow-x-hidden">
+      {/* Sidebar - Responsive */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
+          onLogout={handleLogout}
+        />
+      </div>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
+      <main className="flex-1 lg:ml-64 min-h-screen transition-all duration-300">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 flex justify-between items-center p-4 lg:p-8 bg-background/80 backdrop-blur-xl border-b border-white/5 mb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 lg:hidden bg-surface rounded-xl text-textSecondary hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <div className="relative w-48 md:w-80 lg:w-96 hidden sm:block">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary" size={18} />
+              <input
+                type="text"
+                placeholder="Tìm kiếm..."
+                className="w-full bg-surface border border-white/5 rounded-2xl py-2.5 pl-11 pr-4 outline-none focus:border-primary/50 transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="relative">
+              <button
+                onClick={handleMarkRead}
+                className={`p-2.5 rounded-xl transition-all relative ${showNotif ? 'bg-primary text-white' : 'bg-surface hover:bg-white/5 text-textSecondary'}`}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-danger text-[9px] font-bold rounded-full border-2 border-surface flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotif && (
+                <div className="absolute right-0 mt-3 w-80 glass rounded-3xl border border-white/10 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                    <h3 className="font-black text-xs uppercase tracking-widest text-textSecondary">Thông báo mới</h3>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{notifications.length} tin</span>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                    {notifications.length > 0 ? (
+                      notifications.map((n, i) => (
+                        <div key={i} className={`p-4 border-b border-white/5 hover:bg-white/[0.04] transition-colors relative ${!n.isRead ? 'bg-primary/[0.03]' : ''}`}>
+                          {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
+                          <p className="text-sm font-bold text-white/90 leading-tight mb-1">{n.message}</p>
+                          <p className="text-[10px] text-textSecondary font-medium">{formatNotifDate(n.date)}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-10 text-center opacity-20">
+                        <Bell size={32} className="mx-auto mb-2" />
+                        <p className="text-xs font-black uppercase tracking-widest">Không có thông báo</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 md:gap-3 bg-surface p-1.5 md:pr-4 rounded-xl md:rounded-2xl border border-white/5 cursor-pointer hover:bg-white/5 transition-all">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary to-primaryHover rounded-lg md:rounded-xl flex items-center justify-center font-bold">
+                <User size={18} md:size={20} />
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-xs font-bold leading-none mb-0.5">{profile.email.split('@')[0]}</p>
+                <p className="text-[9px] text-textSecondary font-medium uppercase tracking-wider">{profile.email.substring(0, 15)}...</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="px-4 lg:px-8 pb-10 max-w-7xl mx-auto">
+          {renderContent()}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;
