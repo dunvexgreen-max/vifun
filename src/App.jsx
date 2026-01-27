@@ -13,6 +13,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(sessionStorage.getItem('userEmail'));
@@ -36,6 +37,7 @@ function App() {
       fetchNotifications();
     }
     setShowNotif(!showNotif);
+    setShowProfile(false);
   };
 
   useEffect(() => {
@@ -168,14 +170,72 @@ function App() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 md:gap-3 bg-surface p-1.5 md:pr-4 rounded-xl md:rounded-2xl border border-white/5 cursor-pointer hover:bg-white/5 transition-all">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary to-primaryHover rounded-lg md:rounded-xl flex items-center justify-center font-bold">
-                <User size={18} md:size={20} />
+            <div className="relative">
+              <div
+                onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }}
+                className={`flex items-center gap-2 md:gap-3 p-1.5 md:pr-4 rounded-xl md:rounded-2xl border transition-all cursor-pointer ${showProfile ? 'bg-primary/10 border-primary/30' : 'bg-surface border-white/5 hover:bg-white/5'}`}
+              >
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary to-primaryHover rounded-lg md:rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-primary/20">
+                  <User size={18} />
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-xs font-black leading-none mb-0.5 uppercase tracking-tighter">{profile.email.split('@')[0]}</p>
+                  <p className="text-[9px] text-textSecondary font-bold uppercase tracking-[0.15em] opacity-50">Tài khoản Live</p>
+                </div>
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-xs font-bold leading-none mb-0.5">{profile.email.split('@')[0]}</p>
-                <p className="text-[9px] text-textSecondary font-medium uppercase tracking-wider">{profile.email.substring(0, 15)}...</p>
-              </div>
+
+              {showProfile && (
+                <div className="absolute right-0 mt-3 w-72 glass rounded-[32px] border border-white/10 shadow-3xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-6 bg-gradient-to-br from-primary/10 to-transparent border-b border-white/5">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-primary/20">
+                        {profile.email[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-black text-white truncate tracking-tight">{profile.email}</p>
+                        <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Thành viên Pro</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                        <p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1">Tổng tài sản</p>
+                        <p className="text-xs font-black text-white">{(profile.totalAssets || 0).toLocaleString()}đ</p>
+                      </div>
+                      <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                        <p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1">Vốn khởi tạo</p>
+                        <p className="text-xs font-black text-white">100.000.000đ</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={() => { setActiveTab('wallet'); setShowProfile(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-textSecondary hover:bg-white/5 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
+                    >
+                      <div className="p-1.5 bg-white/5 rounded-lg"><User size={14} /></div>
+                      Hồ sơ cá nhân
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-textSecondary hover:bg-white/5 hover:text-white transition-all text-xs font-black uppercase tracking-widest">
+                      <div className="p-1.5 bg-white/5 rounded-lg"><Search size={14} /></div>
+                      Bảo mật tài khoản
+                    </button>
+                    <div className="h-px bg-white/5 mx-4 my-2"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-danger hover:bg-danger/10 transition-all text-xs font-black uppercase tracking-widest"
+                    >
+                      <div className="p-1.5 bg-danger/10 rounded-lg"><Bell size={14} className="rotate-45" /></div>
+                      Đăng xuất ngay
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-white/[0.02] text-center border-t border-white/5">
+                    <p className="text-[8px] font-black text-textSecondary uppercase tracking-[0.3em]">StockSim v2.0 © 2024</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
