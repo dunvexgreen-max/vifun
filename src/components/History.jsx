@@ -48,9 +48,9 @@ const History = ({ profile, refreshProfile }) => {
 				</h2>
 			</div>
 
-			<div className="glass rounded-[32px] overflow-hidden border-white/5 shadow-2xl">
-				<div className="overflow-x-auto custom-scrollbar scroll-smooth-touch">
-					<table className="w-full text-left border-collapse min-w-[950px]">
+			<div className="glass rounded-[32px] shadow-2xl border-white/5">
+				<div className="w-full overflow-x-auto custom-scrollbar scroll-smooth-touch rounded-[32px]">
+					<table className="w-full text-left border-collapse min-w-[1050px]">
 						<thead>
 							<tr className="bg-white/5 text-[10px] font-black text-textSecondary uppercase tracking-[0.15em]">
 								<th className="px-8 py-6">Thời gian</th>
