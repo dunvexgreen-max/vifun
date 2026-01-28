@@ -43,38 +43,72 @@ function response(data, code = 200) {
 
 function getIndices(headers) {
   const h = headers.map(v => String(v).trim().toLowerCase());
+  const find = (names) => {
+    for (let name of names) {
+      const i = h.indexOf(name.toLowerCase());
+      if (i !== -1) return i;
+    }
+    return -1;
+  };
+
   return {
-    id: h.indexOf('id'),
-    date: h.indexOf('date'),
-    actual: h.indexOf('actual'),
-    projected: h.indexOf('projected'),
-    amount: h.indexOf('amount'),
-    type: h.indexOf('type'),
-    category: h.indexOf('category'),
-    description: h.indexOf('description'),
-    source: h.indexOf('source'),
-    status: h.indexOf('status'),
-    email: h.indexOf('useremail')
+    id: find(['id', 'mã', 'transid']),
+    date: find(['date', 'ngày', 'time']),
+    actual: find(['actual', 'thực tế', 'thực thu', 'thực chi']),
+    projected: find(['projected', 'dự kiến', 'kế hoạch']),
+    amount: find(['amount', 'số tiền', 'giá trị']),
+    type: find(['type', 'loại', 'phân loại']),
+    category: find(['category', 'danh mục', 'nhóm']),
+    description: find(['description', 'mô tả', 'nội dung']),
+    source: find(['source', 'nguồn', 'tài khoản']),
+    status: find(['status', 'trạng thái']),
+    email: find(['useremail', 'email', 'người dùng'])
   };
 }
 
-function ensureSheet(ss, name, headers) {
+function ensureSheet(ss, name, targetHeaders) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
-    sheet.appendRow(headers);
+    sheet.appendRow(targetHeaders);
+    return sheet;
   }
   
-  const currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
-  const normalized = currentHeaders.map(v => String(v).trim());
-  let lastCol = sheet.getLastColumn();
+  // 1. Lấy tiêu đề hiện tại và chuẩn hóa
+  let currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
   
-  headers.forEach(h => {
-    if (normalized.indexOf(h) === -1) {
-      lastCol++;
-      sheet.getRange(1, lastCol).setValue(h);
+  // 2. Tìm và xóa các cột trùng lặp (Case-insensitive)
+  const seenHeader = {};
+  const colsToDelete = [];
+  
+  for (let i = 0; i < currentHeaders.length; i++) {
+    const raw = String(currentHeaders[i]).trim();
+    if (!raw) continue;
+    const lower = raw.toLowerCase();
+    
+    if (seenHeader[lower]) {
+      // Nếu đã thấy tiêu đề này rồi (trùng lặp), đánh dấu để xóa
+      colsToDelete.push(i + 1);
+    } else {
+      seenHeader[lower] = true;
+    }
+  }
+  
+  // Xóa từ phải qua trái để không lệch index
+  for (let i = colsToDelete.length - 1; i >= 0; i--) {
+    sheet.deleteColumn(colsToDelete[i]);
+  }
+
+  // 3. Sau khi xóa, kiểm tra xem có thiếu cột nào trong targetHeaders không
+  currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  const normalizedCurrent = currentHeaders.map(v => String(v).trim().toLowerCase());
+  
+  targetHeaders.forEach(h => {
+    if (normalizedCurrent.indexOf(h.toLowerCase()) === -1) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h);
     }
   });
+  
   SpreadsheetApp.flush();
   return sheet;
 }
@@ -173,23 +207,24 @@ function getFinanceTransactions(email) {
 
     data.slice(1).forEach((row, rowIndex) => {
       try {
-        const rowEmail = String(row[idx.email] || "").trim().toLowerCase();
+        const rowEmail = idx.email !== -1 ? String(row[idx.email] || "").trim().toLowerCase() : "";
         
-        // Hỗ trợ lọc email linh hoạt
         if (!targetEmail || rowEmail === targetEmail || rowEmail === "") {
-          if (!row[idx.id]) return;
+          const transId = (idx.id !== -1 && row[idx.id]) ? String(row[idx.id]) : ("MANUAL_" + rowIndex + "_" + (new Date().getTime()));
 
           let actual = 0;
           let projected = 0;
 
+          const rawActual = idx.actual !== -1 ? cleanNum(row[idx.actual]) : 0;
+          const rawProjected = idx.projected !== -1 ? cleanNum(row[idx.projected]) : 0;
+          const rawAmount = idx.amount !== -1 ? cleanNum(row[idx.amount]) : 0;
+
           if (isSyncSource) {
-            // Nguồn Ngân hàng: Chỉ là THỰC TẾ
-            actual = cleanNum(row[idx.actual]) || cleanNum(row[idx.amount]) || 0;
+            actual = rawActual || rawAmount || 0;
             projected = 0;
           } else {
-            // Nguồn Nhập tay: Chỉ là DỰ KIẾN
-            actual = cleanNum(row[idx.actual]);
-            projected = cleanNum(row[idx.projected]) || cleanNum(row[idx.amount]) || 0;
+            actual = rawActual;
+            projected = rawProjected || rawAmount || 0;
           }
 
           if (actual > 0 || projected > 0) {
@@ -200,14 +235,14 @@ function getFinanceTransactions(email) {
             if (!dateObj || isNaN(dateObj.getTime())) return; // Vẫn bỏ qua nếu thực sự không thể parse
 
             results.push({
-              id: String(row[idx.id] || "ID_" + rowIndex),
+              id: transId,
               date: dateObj.toISOString(),
               actual: actual,
               projected: projected,
-              type: String(row[idx.type] || "EXPENSE").trim().toUpperCase(),
-              category: String(row[idx.category] || "Khác"),
-              description: String(row[idx.description] || ""),
-              source: String(row[idx.source] || (isSyncSource ? "Ngân hàng" : "Thủ công")),
+              type: idx.type !== -1 ? String(row[idx.type] || "EXPENSE").trim().toUpperCase() : "EXPENSE",
+              category: idx.category !== -1 ? String(row[idx.category] || "Khác") : "Khác",
+              description: idx.description !== -1 ? String(row[idx.description] || "") : "",
+              source: idx.source !== -1 ? String(row[idx.source] || "") : (isSyncSource ? "Ngân hàng" : "Thủ công"),
               status: isSyncSource ? 'SYNCED' : 'MANUAL'
             });
           }
@@ -226,10 +261,24 @@ function getFinanceTransactions(email) {
   
   // SẮP XẾP XEN KẼ THÔNG MINH: Mới nhất lên đầu
   return allTx.sort((a, b) => {
-    const timeA = new Date(a.date).getTime();
-    const timeB = new Date(b.date).getTime();
-    if (timeA !== timeB) return timeB - timeA;
-    return a.status === 'MANUAL' ? -1 : 1; 
+    const d1 = new Date(a.date);
+    const d2 = new Date(b.date);
+    
+    // So sánh ngày (không tính giờ)
+    const dateA = d1.toISOString().split('T')[0];
+    const dateB = d2.toISOString().split('T')[0];
+    
+    if (dateA !== dateB) {
+      return dateB.localeCompare(dateA); // Ngày mới nhất lên đầu
+    }
+    
+    // Nếu cùng ngày: Ưu tiên MANUAL (Kế hoạch) hiển thị trước SYNCED (Thực tế)
+    if (a.status !== b.status) {
+      return a.status === 'MANUAL' ? -1 : 1;
+    }
+    
+    // Nếu cùng status: Sắp xếp theo giờ chính xác
+    return d2.getTime() - d1.getTime();
   });
 }
 
