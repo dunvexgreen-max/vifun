@@ -37,6 +37,7 @@ const Finance = ({ userEmail }) => {
 
 	const [transactions, setTransactions] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [selectedTx, setSelectedTx] = useState(null);
 
 	// Filtering and Pagination state
 	const [startDate, setStartDate] = useState(() => {
@@ -356,7 +357,11 @@ const Finance = ({ userEmail }) => {
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
-										<tr key={i} className="hover:bg-white/[0.04] transition-all group cursor-default">
+										<tr
+											key={i}
+											onClick={() => setSelectedTx(t)}
+											className="hover:bg-white/[0.04] transition-all group cursor-pointer"
+										>
 											<td className="px-6 lg:px-8 py-4">
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
@@ -425,7 +430,11 @@ const Finance = ({ userEmail }) => {
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
-										<tr key={i} className="hover:bg-white/[0.04] transition-all group cursor-default">
+										<tr
+											key={i}
+											onClick={() => setSelectedTx(t)}
+											className="hover:bg-white/[0.04] transition-all group cursor-pointer"
+										>
 											<td className="px-6 lg:px-8 py-4">
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
@@ -625,6 +634,93 @@ const Finance = ({ userEmail }) => {
 									{isSaving ? 'Đang xử lý...' : 'Xác nhận bản ghi'}
 								</button>
 							</form>
+						</motion.div>
+					</div>
+				)}
+			</AnimatePresence>
+
+			{/* Modal for Transaction Detail */}
+			<AnimatePresence>
+				{selectedTx && (
+					<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedTx(null)}>
+						<motion.div
+							initial={{ opacity: 0, scale: 0.95, y: 30 }}
+							animate={{ opacity: 1, scale: 1, y: 0 }}
+							exit={{ opacity: 0, scale: 0.95, y: 30 }}
+							onClick={e => e.stopPropagation()}
+							className="bg-[#151921] border border-white/10 w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
+						>
+							<div className="p-10">
+								<div className="flex justify-between items-center mb-10">
+									<div>
+										<h3 className="text-2xl font-black tracking-tighter text-white">Chi Tiết Giao Dịch</h3>
+										<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+											{selectedTx.type === 'INCOME' ? 'Khoản Thu' : 'Khoản Chi'} • {selectedTx.status === 'MANUAL' ? 'Bản ghi thủ công' : 'Đã đồng bộ ngân hàng'}
+										</p>
+									</div>
+									<button onClick={() => setSelectedTx(null)} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-500 hover:text-white transition-all">
+										<X size={20} />
+									</button>
+								</div>
+
+								<div className="space-y-6">
+									<div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+										<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Mô tả / Nội dung</p>
+										<p className="text-lg font-bold text-white leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
+									</div>
+
+									<div className="grid grid-cols-2 gap-4">
+										<div className="bg-black/40 p-5 rounded-3xl border border-white/5">
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Ngày tháng</p>
+											<p className="text-sm font-bold text-white">{new Date(selectedTx.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+										</div>
+										<div className="bg-black/40 p-5 rounded-3xl border border-white/5">
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Danh mục</p>
+											<p className="text-sm font-bold text-white">{selectedTx.category || 'Khác'}</p>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-2 gap-4">
+										<div className="bg-[#151921] p-6 rounded-3xl border border-white/5 shadow-inner">
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Kế hoạch</p>
+											<p className="text-xl font-black text-blue-400">{formatVND(selectedTx.projected || 0)}</p>
+										</div>
+										<div className="bg-[#151921] p-6 rounded-3xl border border-white/5 shadow-inner">
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Thực tế</p>
+											<p className="text-xl font-black text-white">{formatVND(selectedTx.actual || 0)}</p>
+										</div>
+									</div>
+
+									<div className="flex items-center justify-between p-6 bg-white/[0.02] rounded-3xl border border-white/5">
+										<div>
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Chênh lệch</p>
+											<p className={`text-sm font-black uppercase ${selectedTx.type === 'INCOME'
+													? (selectedTx.actual - selectedTx.projected >= 0 ? 'text-emerald-400' : 'text-red-400')
+													: (selectedTx.projected - selectedTx.actual < 0 ? 'text-red-400' : 'text-emerald-400')
+												}`}>
+												{formatVND(Math.abs(selectedTx.actual - selectedTx.projected))}
+												<span className="ml-2 text-[8px]">
+													({selectedTx.type === 'INCOME'
+														? (selectedTx.actual >= selectedTx.projected ? 'Vượt thu' : 'Hụt thu')
+														: (selectedTx.actual > selectedTx.projected ? 'Vượt chi' : 'Tiết kiệm')
+													})
+												</span>
+											</p>
+										</div>
+										<div className="text-right">
+											<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Nguồn</p>
+											<p className="text-xs font-bold text-gray-300">{selectedTx.source || 'N/A'}</p>
+										</div>
+									</div>
+								</div>
+
+								<button
+									onClick={() => setSelectedTx(null)}
+									className="w-full mt-10 py-5 bg-white/5 text-white text-xs font-black uppercase tracking-widest rounded-3xl hover:bg-white/10 transition-all active:scale-95"
+								>
+									Đóng
+								</button>
+							</div>
 						</motion.div>
 					</div>
 				)}
