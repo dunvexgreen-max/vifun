@@ -28,7 +28,7 @@ function App() {
   };
 
   const fetchNotifications = async (email) => {
-    const res = await api.call('getNotifications', { email: email || userEmail });
+    const res = await api.call('getNotifications', { email: email || userEmail }, 'trading', { silent: true });
     if (res && Array.isArray(res)) setNotifications(res);
   };
 

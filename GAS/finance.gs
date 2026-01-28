@@ -1,6 +1,10 @@
 /**
  * Google Apps Script for Finance Management & Gmail Receipt Sync
  * Spreadsheet ID: 1mKriBf9F_MST3nCe66b7675Ha6DxdYZ_EuPij2mU_MY
+ * 
+ * Data Separation:
+ * - 'Financial_Transactions': Synced from Gmail.
+ * - 'Manual_Transactions': Entries added via form.
  */
 
 const FINANCE_SPREADSHEET_ID = '1mKriBf9F_MST3nCe66b7675Ha6DxdYZ_EuPij2mU_MY';
@@ -10,7 +14,6 @@ function doPost(e) {
   const params = JSON.parse(e.postData.contents);
   const action = params.action;
 
-  // Security check
   if (params.apiKey !== API_SECRET_KEY) {
     return response({ error: 'API Key không hợp lệ.' }, 401);
   }
@@ -38,158 +41,42 @@ function response(data, code = 200) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/**
- * Deep Sync: Optimized for high-volume users (QR payments & Transfers)
- */
-function syncGmailReceipts(userEmail) {
-  const startTime = new Date().getTime();
-  const queries = [
-    'from:VCBDigibank "Biên lai" OR "Biến động" OR "nhận tiền" OR "Chuyển tiền" OR "VietQR" OR "Nạp tiền" OR "Lương" OR "Cộng"',
-    'from:vib "Thanh toán" OR "giao dịch" OR "biên lai" OR "biến động" OR "QR" OR "nhận tiền"',
-    'category:purchases after:2025/01/01'
-  ];
-  
-  const ss = SpreadsheetApp.openById(FINANCE_SPREADSHEET_ID);
-  let sheet = ss.getSheetByName('Financial_Transactions');
+function getIndices(headers) {
+  const h = headers.map(v => String(v).trim().toLowerCase());
+  return {
+    id: h.indexOf('id'),
+    date: h.indexOf('date'),
+    actual: h.indexOf('actual'),
+    projected: h.indexOf('projected'),
+    amount: h.indexOf('amount'),
+    type: h.indexOf('type'),
+    category: h.indexOf('category'),
+    description: h.indexOf('description'),
+    source: h.indexOf('source'),
+    status: h.indexOf('status'),
+    email: h.indexOf('useremail')
+  };
+}
+
+function ensureSheet(ss, name, headers) {
+  let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    sheet = ss.insertSheet('Financial_Transactions');
-    sheet.appendRow(['ID', 'Date', 'Amount', 'Type', 'Category', 'Description', 'Source', 'Beneficiary', 'AccountNum', 'Status', 'UserEmail']);
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
   }
-
-  // Use a Map for O(1) checking of existing IDs
-  const dataRange = sheet.getDataRange().getValues();
-  const existingIdMap = {};
-  dataRange.forEach(r => { existingIdMap[r[0].toString()] = true; });
   
-  let syncCount = 0;
-  let rowsToAppend = [];
-
-  queries.forEach(query => {
-    // Increase limit to 100 threads to catch more history for active users
-    const threads = GmailApp.search(query, 0, 100);
-    
-    // Batch fetch messages to be faster
-    const threadMessages = GmailApp.getMessagesForThreads(threads);
-    
-    threadMessages.forEach((messages) => {
-      // Safety check: Apps Script has a 6 min limit
-      if (new Date().getTime() - startTime > 300000) return; 
-
-      // Duyệt qua TẤT CẢ tin nhắn trong thread (vì VCB thường gộp các thông báo cùng chủ đề)
-      messages.forEach((msg) => {
-        const body = msg.getBody();
-        const subject = msg.getSubject();
-        const plainBody = msg.getPlainBody();
-        const msgDate = msg.getDate();
-        
-        let transData = null;
-
-        if (subject.includes('VCBDigibank') || body.includes('Vietcombank')) {
-          // Thử lấy mã giao dịch từ body, nếu không có thì dùng Message ID
-          const orderNum = extractField(body, 'Số lệnh giao dịch', 'Order Number') || ('VCB_' + msg.getId().substring(0, 12));
-          
-          if (!existingIdMap[orderNum]) {
-            let rawDate = extractField(body, 'Ngày, giờ giao dịch', 'Trans. Date, Time');
-            let parsedDate = msgDate.toISOString(); 
-            
-            if (rawDate) {
-              // Format: 10:28 Thứ Tư 28/01/2026 hoặc 10:28 28/01/2026
-              const dateMatch = rawDate.match(/(\d{2}:\d{2}).*?(\d{2}\/\d{2}\/\d{4})/);
-              if (dateMatch) {
-                const [h, m] = dateMatch[1].split(':');
-                const [d, mon, y] = dateMatch[2].split('/');
-                parsedDate = new Date(parseInt(y), parseInt(mon) - 1, parseInt(d), parseInt(h), parseInt(m)).toISOString();
-              }
-            }
-
-            // Lấy số tiền: Loại bỏ dấu + / - và các ký tự không phải số
-            const amountStr = extractField(body, 'Số tiền', 'Amount');
-            const amount = parseFloat(amountStr.replace(/[^\d]/g, ''));
-            
-            let type = 'EXPENSE';
-            // VCB Income detection: "Số dư +", "nhận tiền", "Ghi có", hoặc có dấu "+" trong ô số tiền
-            if (subject.includes('nhận tiền') || 
-                body.toLowerCase().includes('nhận được') || 
-                body.includes('+') || 
-                body.includes('Ghi có')) {
-              type = 'INCOME';
-            }
-
-            transData = {
-              id: orderNum,
-              date: parsedDate,
-              amount: amount,
-              type: type,
-              note: extractField(body, 'Nội dung chuyển tiền', 'Details of Payment') || subject,
-              source: 'Vietcombank'
-            };
-          }
-        } else if (subject.toUpperCase().includes('VIB') || body.includes('Ngân hàng Quốc tế')) {
-          const id = 'VIB_' + msg.getId().substring(0, 12);
-          if (!existingIdMap[id]) {
-            const amountMatch = plainBody.match(/(?:Số tiền|Giá trị):?\s?([\+|-]?[\d\.,]+)\s?VND/i);
-            let amount = 0;
-            let type = 'EXPENSE';
-            if (amountMatch) {
-              const str = amountMatch[1];
-              if (str.includes('+')) type = 'INCOME';
-              amount = parseFloat(str.replace(/[^\d]/g, ''));
-            }
-
-            transData = {
-              id: id,
-              date: msgDate.toISOString(),
-              amount: amount,
-              type: type,
-              note: subject,
-              source: 'VIB'
-            };
-          }
-        } else {
-          // Purchases / Other
-          const id = 'PUR_' + msg.getId().substring(0, 12);
-          if (!existingIdMap[id]) {
-            const amountMatch = plainBody.match(/(?:Total|Tổng cộng|Số tiền):?\s?VND\s?([\d\.,]+)|([\d\.,]+)\s?VND/i);
-            let amount = amountMatch ? parseFloat((amountMatch[1] || amountMatch[2]).replace(/[^\d]/g, '')) : 0;
-            
-            if (amount > 0) {
-              transData = {
-                id: id,
-                date: msgDate.toISOString(),
-                amount: amount,
-                type: 'EXPENSE',
-                note: subject,
-                source: subject.split(' ')[0]
-              };
-            }
-          }
-        }
-
-        if (transData && transData.amount > 0) {
-          rowsToAppend.push([
-            transData.id,
-            transData.date,
-            transData.amount,
-            transData.type,
-            'Deep Sync',
-            transData.note,
-            transData.source,
-            '', '', 'SYNCED',
-            userEmail
-          ]);
-          existingIdMap[transData.id.toString()] = true;
-          syncCount++;
-        }
-      });
-    });
+  const currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  const normalized = currentHeaders.map(v => String(v).trim());
+  let lastCol = sheet.getLastColumn();
+  
+  headers.forEach(h => {
+    if (normalized.indexOf(h) === -1) {
+      lastCol++;
+      sheet.getRange(1, lastCol).setValue(h);
+    }
   });
-
-  // Batch append rows for maximum performance
-  if (rowsToAppend.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, 11).setValues(rowsToAppend);
-  }
-
-  return { success: true, syncCount: syncCount };
+  SpreadsheetApp.flush();
+  return sheet;
 }
 
 function extractField(html, labelVi, labelEn) {
@@ -201,127 +88,209 @@ function extractField(html, labelVi, labelEn) {
   return '';
 }
 
-function getFinanceSummary(email) {
+function syncGmailReceipts(userEmail) {
+  const startTime = new Date().getTime();
   const ss = SpreadsheetApp.openById(FINANCE_SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('Financial_Transactions');
-  if (!sheet) return { monthlyIncome: 0, monthlyExpense: 0, balance: 0, categories: [] };
-
+  const headers = ['ID', 'Date', 'Amount', 'Type', 'Category', 'Description', 'Source', 'Status', 'UserEmail', 'Actual', 'Projected'];
+  const sheet = ensureSheet(ss, 'Financial_Transactions', headers);
+  
   const data = sheet.getDataRange().getValues();
-  let income = 0;
-  let expense = 0;
-  const categoryMap = {};
+  const idx = getIndices(data[0]);
+  const existingIdMap = {};
+  data.forEach(r => { if(r[idx.id]) existingIdMap[r[idx.id].toString()] = true; });
 
-  data.slice(1).forEach(row => {
-    if (row[10] === email) { // Filter by userEmail column
-      const amount = parseFloat(row[2]) || 0;
-      if (row[3] === 'INCOME') income += amount;
-      else expense += amount;
+  const queries = [
+    'from:VCBDigibank "Biên lai" OR "Biến động" OR "VietQR"',
+    'from:vib "Thanh toán" OR "giao dịch" OR "biên lai"',
+    'category:purchases after:2025/01/01'
+  ];
 
-      const cat = row[4] || 'Other';
-      categoryMap[cat] = (categoryMap[cat] || 0) + amount;
-    }
+  let syncCount = 0;
+  let rowsToAppend = [];
+
+  queries.forEach(query => {
+    const threads = GmailApp.search(query, 0, 30);
+    const threadMessages = GmailApp.getMessagesForThreads(threads);
+    threadMessages.forEach((messages) => {
+      if (new Date().getTime() - startTime > 300000) return; 
+      messages.forEach((msg) => {
+        const body = msg.getBody();
+        const subject = msg.getSubject();
+        const id = 'EMAIL_' + msg.getId().substring(0, 10);
+        
+        if (!existingIdMap[id]) {
+          const amountStr = extractField(body, 'Số tiền', 'Amount');
+          const amount = parseFloat(amountStr.replace(/[^\d]/g, '')) || 0;
+          if (amount > 0) {
+            let type = (subject.includes('nhận') || body.includes('+') || body.includes('Ghi có')) ? 'INCOME' : 'EXPENSE';
+            const newRow = new Array(headers.length).fill('');
+            newRow[idx.id] = id;
+            newRow[idx.date] = msg.getDate().toISOString();
+            newRow[idx.amount] = amount;
+            newRow[idx.actual] = amount;
+            newRow[idx.projected] = amount;
+            newRow[idx.type] = type;
+            newRow[idx.category] = 'Deep Sync';
+            newRow[idx.description] = extractField(body, 'Nội dung', 'Details') || subject;
+            newRow[idx.source] = 'Ngân hàng';
+            newRow[idx.status] = 'SYNCED';
+            newRow[idx.email] = userEmail;
+            rowsToAppend.push(newRow);
+            existingIdMap[id] = true;
+            syncCount++;
+          }
+        }
+      });
+    });
   });
 
-  const categories = Object.keys(categoryMap).map(name => ({
-    name: name,
-    amount: categoryMap[name]
-  })).slice(0, 4);
-
-  return {
-    monthlyIncome: income / 1000, // Scaling for UI placeholder logic
-    monthlyExpense: expense / 1000,
-    balance: (income - expense) / 1000,
-    categories: categories.length > 0 ? categories : [
-      { name: 'General', amount: expense }
-    ]
-  };
+  if (rowsToAppend.length > 0) sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, data[0].length).setValues(rowsToAppend);
+  return { success: true, syncCount: syncCount };
 }
 
 function getFinanceTransactions(email) {
   const ss = SpreadsheetApp.openById(FINANCE_SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('Financial_Transactions');
-  if (!sheet) return [];
+  const headers = ['ID', 'Date', 'Amount', 'Type', 'Category', 'Description', 'Source', 'Status', 'UserEmail', 'Actual', 'Projected'];
   
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
+  const sheetSync = ensureSheet(ss, 'Financial_Transactions', headers);
+  const sheetManual = ensureSheet(ss, 'Manual_Transactions', headers);
   
-  return data.slice(1)
-    .filter(row => row[10] === email) // Filter by userEmail column
-    .map(row => {
-      let rawDate = row[1];
-      let finalDate = rawDate;
+  const dataSync = sheetSync.getDataRange().getValues();
+  const dataManual = sheetManual.getDataRange().getValues();
+  
+  const targetEmail = String(email || "").trim().toLowerCase();
 
-      // Check if it's a Vietnamese date string: "07:39 Thứ Tư 28/01/2026"
-      if (typeof rawDate === 'string' && rawDate.includes('Thứ')) {
-        const match = rawDate.match(/(\d{2}:\d{2}).*?(\d{2}\/\d{2}\/\d{4})/);
-        if (match) {
-          const [h, m] = match[1].split(':');
-          const [d, mon, y] = match[2].split('/');
-          finalDate = new Date(y, mon - 1, d, h, m).toISOString();
+  const cleanNum = (val) => {
+    if (typeof val === 'number') return val;
+    const s = String(val || "").replace(/[^\d]/g, "");
+    return s === "" ? 0 : parseFloat(s);
+  };
+
+  const parseData = (data, isSyncSource) => {
+    if (data.length <= 1) return [];
+    const idx = getIndices(data[0]);
+    const results = [];
+
+    data.slice(1).forEach((row, rowIndex) => {
+      try {
+        const rowEmail = String(row[idx.email] || "").trim().toLowerCase();
+        
+        // Hỗ trợ lọc email linh hoạt
+        if (!targetEmail || rowEmail === targetEmail || rowEmail === "") {
+          if (!row[idx.id]) return;
+
+          let actual = 0;
+          let projected = 0;
+
+          if (isSyncSource) {
+            // Nguồn Ngân hàng: Chỉ là THỰC TẾ
+            actual = cleanNum(row[idx.actual]) || cleanNum(row[idx.amount]) || 0;
+            projected = 0;
+          } else {
+            // Nguồn Nhập tay: Chỉ là DỰ KIẾN
+            actual = cleanNum(row[idx.actual]);
+            projected = cleanNum(row[idx.projected]) || cleanNum(row[idx.amount]) || 0;
+          }
+
+          if (actual > 0 || projected > 0) {
+            // Để "Xen kẽ thông minh", ta cần chuẩn hóa thời gian
+            let dateVal = row[idx.date];
+            let dateObj = new Date(dateVal);
+            
+            if (isNaN(dateObj.getTime())) return;
+
+            results.push({
+              id: String(row[idx.id]),
+              date: dateObj.toISOString(),
+              actual: actual,
+              projected: projected,
+              type: String(row[idx.type] || "EXPENSE").trim().toUpperCase(),
+              category: String(row[idx.category] || "Khác"),
+              description: String(row[idx.description] || ""),
+              source: String(row[idx.source] || (isSyncSource ? "Ngân hàng" : "Thủ công")),
+              status: isSyncSource ? 'SYNCED' : 'MANUAL'
+            });
+          }
         }
-      } else if (rawDate instanceof Date) {
-        finalDate = rawDate.toISOString();
+      } catch (e) {
+        Logger.log("Error at row " + (rowIndex + 2) + ": " + e.message);
       }
+    });
+    return results;
+  };
 
-      return {
-        id: row[0],
-        date: finalDate,
-        amount: row[2],
-        type: row[3],
-        category: row[4],
-        description: row[5],
-        source: row[6]
-      };
-    }).reverse();
+  const allTx = [
+    ...parseData(dataSync, true), 
+    ...parseData(dataManual, false)
+  ];
+  
+  // SẮP XẾP XEN KẼ THÔNG MINH: Mới nhất lên đầu
+  // Nếu cùng thời gian, ưu tiên hiển thị dòng MANUAL (Kế hoạch) trước
+  return allTx.sort((a, b) => {
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    if (timeA !== timeB) return timeB - timeA;
+    return a.status === 'MANUAL' ? -1 : 1; 
+  });
 }
 
 function addManualTransaction(params) {
   const ss = SpreadsheetApp.openById(FINANCE_SPREADSHEET_ID);
-  let sheet = ss.getSheetByName('Financial_Transactions');
-  if (!sheet) {
-    sheet = ss.insertSheet('Financial_Transactions');
-    sheet.appendRow(['ID', 'Date', 'Amount', 'Type', 'Category', 'Description', 'Source', 'Beneficiary', 'AccountNum', 'Status', 'UserEmail']);
-  }
+  const headers = ['ID', 'Date', 'Amount', 'Type', 'Category', 'Description', 'Source', 'Status', 'UserEmail', 'Actual', 'Projected'];
+  const sheet = ensureSheet(ss, 'Manual_Transactions', headers);
   
-  const id = 'MANUAL_' + new Date().getTime();
-  const amount = parseFloat(params.amount) || 0;
+  const idx = getIndices(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]);
+  const newRow = new Array(sheet.getLastColumn()).fill('');
   
-  sheet.appendRow([
-    id,
-    new Date().toISOString(),
-    amount,
-    params.type.toUpperCase(), // INCOME or EXPENSE
-    params.category || 'Manual',
-    params.description || '',
-    params.source || 'Cash',
-    '',
-    '',
-    'COMPLETED',
-    params.email
-  ]);
+  // Logic: Nhập tay từ Form mặc định là Dự kiến (Actual = 0)
+  // Trừ khi người dùng truyền cả hai số
+  const act = parseFloat(params.actual) || 0;
+  const proj = parseFloat(params.projected) || parseFloat(params.amount) || 0;
+
+  newRow[idx.id] = 'MANUAL_' + new Date().getTime();
+  newRow[idx.date] = params.date ? new Date(params.date).toISOString() : new Date().toISOString();
+  newRow[idx.actual] = act;
+  newRow[idx.projected] = proj;
+  newRow[idx.amount] = proj; // Lưu vào Amount chính để dự phòng
   
-  return { success: true, id: id };
+  newRow[idx.type] = String(params.type || "EXPENSE").trim().toUpperCase();
+  newRow[idx.category] = params.category || 'Manual';
+  newRow[idx.description] = params.description || '';
+  newRow[idx.source] = params.source || 'Thủ công';
+  newRow[idx.status] = 'MANUAL';
+  newRow[idx.email] = String(params.email).trim().toLowerCase();
+
+  // CHÈN VÀO DÒNG 2 (Ngay dưới tiêu đề)
+  sheet.insertRowBefore(2);
+  sheet.getRange(2, 1, 1, newRow.length).setValues([newRow]);
+  
+  return { success: true };
 }
 
-/**
- * Hàm này dùng để cài đặt Trigger (Kích hoạt theo thời gian)
- * Bạn có thể vào mục 'Triggers' trong Apps Script -> Add Trigger -> autoSyncTask -> Every 1 hour
- */
+function getFinanceSummary(email) {
+  const tx = getFinanceTransactions(email);
+  let income = 0, expense = 0;
+  const catMap = {};
+  tx.forEach(t => {
+    if (t.type === 'INCOME') income += t.actual;
+    else expense += t.actual;
+    const cat = t.category || 'Khác';
+    catMap[cat] = (catMap[cat] || 0) + t.actual;
+  });
+  return { monthlyIncome: income, monthlyExpense: expense, balance: income - expense, categories: Object.keys(catMap).map(k => ({name: k, amount: catMap[k]})) };
+}
+
 function autoSyncTask() {
   const ss = SpreadsheetApp.openById(FINANCE_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Financial_Transactions');
   if (!sheet) return;
-
-  // Lấy danh sách email người dùng duy nhất đã từng dùng app
   const data = sheet.getDataRange().getValues();
-  const emails = [...new Set(data.slice(1).map(r => r[10]).filter(e => e))];
+  const headers = data[0];
+  const emailIdx = headers.indexOf('UserEmail');
+  if (emailIdx === -1) return;
   
+  const emails = [...new Set(data.slice(1).map(r => String(r[emailIdx]).trim().toLowerCase()).filter(e => e))];
   emails.forEach(email => {
-    try {
-      syncGmailReceipts(email);
-      Logger.log('Auto-synced for: ' + email);
-    } catch(e) {
-      Logger.log('Failed auto-sync for: ' + email);
-    }
+    try { syncGmailReceipts(email); } catch(e) {}
   });
 }

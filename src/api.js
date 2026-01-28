@@ -5,24 +5,34 @@ const isMock = !TRADING_GAS_URL;
 const API_SECRET_KEY = 'STOCKS_SIM_SECURE_V1_2024_@SEC';
 
 export const api = {
-	async call(action, data = {}, target = 'trading') {
+	async call(action, data = {}, target = 'trading', options = { silent: false }) {
 		if (isMock) return mockApi(action, data);
 
 		const url = target === 'finance' ? FINANCE_GAS_URL : TRADING_GAS_URL;
 
-		try {
-			const response = await fetch(url, {
-				method: 'POST',
-				body: JSON.stringify({
-					apiKey: API_SECRET_KEY,
-					action,
-					...data
-				}),
-			});
-			return await response.json();
-		} catch (error) {
-			console.error('API Error:', error);
-			return { error: 'Connection failed' };
+		let retries = 1;
+		while (retries >= 0) {
+			try {
+				const response = await fetch(url, {
+					method: 'POST',
+					cache: 'no-cache',
+					body: JSON.stringify({
+						apiKey: API_SECRET_KEY,
+						action,
+						...data
+					}),
+				});
+				return await response.json();
+			} catch (error) {
+				if (retries === 0) {
+					if (!options.silent) {
+						console.warn(`[API] ${action} failed:`, error.message);
+					}
+					return { error: 'Connection failed', message: error.message };
+				}
+				retries--;
+				await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+			}
 		}
 	}
 };
