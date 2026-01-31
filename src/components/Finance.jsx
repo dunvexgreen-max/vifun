@@ -229,26 +229,16 @@ const Finance = ({ userEmail }) => {
 	const maxTrend = Math.max(...profitTrend.map(Math.abs), 1);
 	const normalizedTrend = profitTrend.map(v => Math.max(10, (v / maxTrend) * 100));
 
-	// Monthly Aggregation based on filters
+	// Monthly Aggregation for trend (Always 6 months)
 	const getMonthlyData = () => {
 		const months = [];
-		let start, end;
+		const now = new Date();
 
-		if (startDate && endDate) {
-			start = new Date(startDate);
-			start.setDate(1); // Ensure it's the start of the month
-			end = new Date(endDate);
-		} else {
-			const now = new Date();
-			start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-			end = now;
-		}
-
-		let current = new Date(start);
-		while (current <= end || (current.getMonth() === end.getMonth() && current.getFullYear() === end.getFullYear())) {
-			const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
-			const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-			const monthLabel = current.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' });
+		for (let i = 5; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+			const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+			const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+			const monthLabel = d.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' });
 
 			const monthTx = transactions.filter(t => {
 				if (!t.date) return false;
@@ -260,12 +250,7 @@ const Finance = ({ userEmail }) => {
 			const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
 
 			months.push({ label: monthLabel, income: inc, expense: exp });
-
-			// Move to next month
-			current.setMonth(current.getMonth() + 1);
-			if (months.length > 24) break; // Safety cap
 		}
-
 		return months;
 	};
 
