@@ -229,6 +229,48 @@ const Finance = ({ userEmail }) => {
 	const maxTrend = Math.max(...profitTrend.map(Math.abs), 1);
 	const normalizedTrend = profitTrend.map(v => Math.max(10, (v / maxTrend) * 100));
 
+	// Monthly Aggregation based on filters
+	const getMonthlyData = () => {
+		const months = [];
+		let start, end;
+
+		if (startDate && endDate) {
+			start = new Date(startDate);
+			start.setDate(1); // Ensure it's the start of the month
+			end = new Date(endDate);
+		} else {
+			const now = new Date();
+			start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+			end = now;
+		}
+
+		let current = new Date(start);
+		while (current <= end || (current.getMonth() === end.getMonth() && current.getFullYear() === end.getFullYear())) {
+			const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
+			const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+			const monthLabel = current.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' });
+
+			const monthTx = transactions.filter(t => {
+				if (!t.date) return false;
+				const txDate = new Date(t.date);
+				return txDate >= monthStart && txDate <= monthEnd;
+			});
+
+			const inc = monthTx.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
+			const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
+
+			months.push({ label: monthLabel, income: inc, expense: exp });
+
+			// Move to next month
+			current.setMonth(current.getMonth() + 1);
+			if (months.length > 24) break; // Safety cap
+		}
+
+		return months;
+	};
+
+	const monthlyHistory = getMonthlyData();
+
 	const incomes = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'INCOME');
 	const expenses = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'EXPENSE');
 
@@ -719,6 +761,80 @@ const Finance = ({ userEmail }) => {
 							}}
 						/>
 					</div>
+				</div>
+			</div>
+
+			{/* Chart 3: Tổng Hợp Theo Tháng (Full Width) */}
+			<div className="bg-white/[0.03] border border-white/5 rounded-[32px] p-6 lg:p-8 shadow-2xl mb-12">
+				<div className="flex justify-between items-center mb-8">
+					<div>
+						<h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Xu Thế</h4>
+						<h3 className="text-xl font-black text-white uppercase tracking-tighter">Tổng Hợp Thu Nhập & Chi Tiêu Theo Tháng</h3>
+					</div>
+					<div className="flex gap-4">
+						<div className="flex items-center gap-2">
+							<div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+							<span className="text-[10px] font-bold text-gray-400 uppercase">Thu Nhập</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<div className="w-3 h-3 rounded-full bg-red-500"></div>
+							<span className="text-[10px] font-bold text-gray-400 uppercase">Chi Tiêu</span>
+						</div>
+					</div>
+				</div>
+				<div className="h-[350px] w-full">
+					<Bar
+						options={{
+							responsive: true,
+							maintainAspectRatio: false,
+							plugins: {
+								legend: { display: false },
+								tooltip: {
+									backgroundColor: 'rgba(0,0,0,0.9)',
+									padding: 16,
+									titleFont: { size: 12, weight: 'bold' },
+									bodyFont: { size: 13 },
+									cornerRadius: 12,
+									callbacks: {
+										label: (context) => ` ${context.dataset.label}: ${formatVND(context.raw)}`
+									}
+								}
+							},
+							scales: {
+								y: {
+									grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+									ticks: {
+										color: '#64748b',
+										font: { size: 10 },
+										callback: (val) => val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : (val / 1000).toFixed(0) + 'k'
+									}
+								},
+								x: {
+									grid: { display: false, drawBorder: false },
+									ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } }
+								}
+							}
+						}}
+						data={{
+							labels: monthlyHistory.map(m => m.label),
+							datasets: [
+								{
+									label: 'Thu Nhập',
+									data: monthlyHistory.map(m => m.income),
+									backgroundColor: '#10b981',
+									borderRadius: 10,
+									barThickness: 35,
+								},
+								{
+									label: 'Chi Tiêu',
+									data: monthlyHistory.map(m => m.expense),
+									backgroundColor: '#ef4444',
+									borderRadius: 10,
+									barThickness: 35,
+								}
+							]
+						}}
+					/>
 				</div>
 			</div>
 
