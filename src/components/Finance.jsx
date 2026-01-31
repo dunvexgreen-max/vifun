@@ -322,7 +322,7 @@ const Finance = ({ userEmail }) => {
 	};
 
 	return (
-		<div className="flex-1 overflow-auto bg-[#0B0E14] text-white p-4 lg:p-10 font-sans selection:bg-blue-500/30 relative">
+		<div className="flex-1 overflow-auto bg-[#0B0E14] text-white p-3 md:p-6 lg:p-10 font-sans selection:bg-blue-500/30 relative">
 			{/* Toast Notification */}
 			<AnimatePresence>
 				{notification && (
@@ -458,11 +458,11 @@ const Finance = ({ userEmail }) => {
 						<table className="w-full text-left border-collapse">
 							<thead>
 								<tr className="text-[8px] lg:text-[9px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5">
-									<th className="px-4 lg:px-6 py-4">Ngày / Mô tả</th>
-									<th className="px-2 py-4">Kế hoạch</th>
+									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
+									<th className="px-2 py-4 hidden sm:table-cell">Kế hoạch</th>
 									<th className="px-2 py-4">Thực tế</th>
-									<th className="px-4 lg:px-6 py-4 text-right">Trạng thái</th>
-									<th className="px-4 py-4 text-right">Hành động</th>
+									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Tình trạng</th>
+									<th className="px-3 py-4 text-right">Sửa/Xóa</th>
 								</tr>
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-white/5">
@@ -477,7 +477,7 @@ const Finance = ({ userEmail }) => {
 											key={i}
 											className="hover:bg-white/[0.04] transition-all group cursor-pointer"
 										>
-											<td className="px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
+											<td className="px-3 md:px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
 														<span className="text-gray-400 group-hover:text-white transition-colors">
@@ -485,14 +485,14 @@ const Finance = ({ userEmail }) => {
 														</span>
 														{isManual ? null : <span className="text-[9px] text-gray-600 font-medium opacity-60">Synced</span>}
 													</div>
-													<span className="text-[10px] text-gray-500 group-hover:text-gray-400 font-medium truncate max-w-[100px] lg:max-w-[150px]" title={t.description}>
-														{t.description || (isManual ? 'Nhập tay' : 'Giao dịch ngân hàng')}
+													<span className="text-[10px] text-gray-500 group-hover:text-gray-400 font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
+														{t.description || (isManual ? 'Nhập tay' : 'Ngân hàng')}
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-gray-500 font-medium whitespace-nowrap">{formatVND(projected)}</td>
+											<td className="px-2 py-4 text-gray-500 font-medium whitespace-nowrap hidden sm:table-cell">{formatVND(projected)}</td>
 											<td className="px-2 py-4 text-white font-bold whitespace-nowrap">{formatVND(actual)}</td>
-											<td className="px-4 lg:px-6 py-4 text-right">
+											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
 												{variance === 0 ? (
 													<span className="text-[8px] font-black text-gray-500 bg-white/5 px-2 py-1 rounded border border-white/5 uppercase tracking-widest">Đã khớp</span>
 												) : (
@@ -501,21 +501,21 @@ const Finance = ({ userEmail }) => {
 													</span>
 												)}
 											</td>
-											<td className="px-4 py-4 text-right">
-												<div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+											<td className="px-2 py-4 text-right">
+												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
 													<button
 														onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }}
-														className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
 														title="Sửa"
 													>
-														<Edit2 size={14} />
+														<Edit2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 													<button
 														onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }}
-														className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
 														title="Xóa"
 													>
-														<Trash2 size={14} />
+														<Trash2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 												</div>
 											</td>
@@ -549,11 +549,11 @@ const Finance = ({ userEmail }) => {
 						<table className="w-full text-left border-collapse">
 							<thead>
 								<tr className="text-[8px] lg:text-[9px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5">
-									<th className="px-4 lg:px-6 py-4">Ngày / Mô tả</th>
-									<th className="px-2 py-4">Kế hoạch</th>
+									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
+									<th className="px-2 py-4 hidden sm:table-cell">Kế hoạch</th>
 									<th className="px-2 py-4">Thực tế</th>
-									<th className="px-4 lg:px-6 py-4 text-right">Trạng thái</th>
-									<th className="px-4 py-4 text-right">Hành động</th>
+									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Tình trạng</th>
+									<th className="px-3 py-4 text-right">Sửa/Xóa</th>
 								</tr>
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-white/5">
@@ -568,7 +568,7 @@ const Finance = ({ userEmail }) => {
 											key={i}
 											className="hover:bg-white/[0.04] transition-all group cursor-pointer"
 										>
-											<td className="px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
+											<td className="px-3 md:px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
 														<span className="text-gray-400 group-hover:text-white transition-colors">
@@ -576,14 +576,14 @@ const Finance = ({ userEmail }) => {
 														</span>
 														{isManual ? null : <span className="text-[9px] text-gray-600 font-medium opacity-60">Synced</span>}
 													</div>
-													<span className="text-[10px] text-gray-500 group-hover:text-gray-400 font-medium truncate max-w-[100px] lg:max-w-[150px]" title={t.description}>
-														{t.description || (isManual ? 'Nhập tay' : 'Hóa đơn Sync')}
+													<span className="text-[10px] text-gray-500 group-hover:text-gray-400 font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
+														{t.description || (isManual ? 'Nhập tay' : 'Hóa đơn')}
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-gray-500 font-medium whitespace-nowrap">{formatVND(projected)}</td>
+											<td className="px-2 py-4 text-gray-500 font-medium whitespace-nowrap hidden sm:table-cell">{formatVND(projected)}</td>
 											<td className="px-2 py-4 text-white font-bold whitespace-nowrap">{formatVND(actual)}</td>
-											<td className="px-4 lg:px-6 py-4 text-right">
+											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
 												{variance === 0 ? (
 													<span className="text-[8px] font-black text-gray-500 bg-white/5 px-2 py-1 rounded border border-white/5 uppercase tracking-widest">Đã khớp</span>
 												) : (
@@ -592,21 +592,21 @@ const Finance = ({ userEmail }) => {
 													</span>
 												)}
 											</td>
-											<td className="px-4 py-4 text-right">
-												<div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+											<td className="px-2 py-4 text-right">
+												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
 													<button
 														onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }}
-														className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
 														title="Sửa"
 													>
-														<Edit2 size={14} />
+														<Edit2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 													<button
 														onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }}
-														className="p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-white/10 text-white rounded-lg transition-colors"
 														title="Xóa"
 													>
-														<Trash2 size={14} />
+														<Trash2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 												</div>
 											</td>
@@ -627,11 +627,11 @@ const Finance = ({ userEmail }) => {
 			{/* Bottom Charts Row - Comparison Graphs */}
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
 				{/* Chart 1: Thu Nhập vs Chi Tiêu (Thực Tế) */}
-				<div className="bg-white/[0.03] border border-white/5 rounded-[32px] p-6 lg:p-8 shadow-2xl">
-					<div className="flex justify-between items-center mb-6">
-						<div>
-							<h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Cân Đối</h4>
-							<h3 className="text-lg font-black text-white uppercase tracking-tighter">Thu Nhập vs Chi Tiêu</h3>
+				<div className="bg-white/[0.03] border border-white/5 rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
+					<div className="flex justify-between items-center mb-4 md:mb-6">
+						<div className="max-w-[80%]">
+							<h4 className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Cân Đối</h4>
+							<h3 className="text-sm md:text-lg font-black text-white uppercase tracking-tighter leading-tight">Thu Nhập vs Chi Tiêu</h3>
 						</div>
 					</div>
 					<div className="h-[250px] w-full">
@@ -667,14 +667,14 @@ const Finance = ({ userEmail }) => {
 								}
 							}}
 							data={{
-								labels: ['Tổng Thực Thu', 'Tổng Thực Chi'],
+								labels: ['Tổng Thực Thu', 'Tổng Thực Chi', 'Thanh Khoản Ròng'],
 								datasets: [
 									{
-										label: 'Giá trị',
-										data: [totalInflowActual, totalOutflowActual],
-										backgroundColor: ['#10b981', '#ef4444'],
-										borderRadius: 12,
-										barThickness: 45,
+										label: 'Dòng Tiền',
+										data: [totalInflowActual, totalOutflowActual, netLiquidity],
+										backgroundColor: ['#10b981', '#ef4444', '#3b82f6'],
+										borderRadius: 8,
+										maxBarThickness: 45,
 									}
 								]
 							}}
@@ -683,11 +683,11 @@ const Finance = ({ userEmail }) => {
 				</div>
 
 				{/* Chart 2: Kế Hoạch vs Thực Tế */}
-				<div className="bg-white/[0.03] border border-white/5 rounded-[32px] p-6 lg:p-8 shadow-2xl">
-					<div className="flex justify-between items-center mb-6">
-						<div>
-							<h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Hiệu Suất</h4>
-							<h3 className="text-lg font-black text-white uppercase tracking-tighter">Kế Hoạch vs Thực Tế</h3>
+				<div className="bg-white/[0.03] border border-white/5 rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
+					<div className="flex justify-between items-center mb-4 md:mb-6">
+						<div className="max-w-[80%]">
+							<h4 className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Hiệu Suất</h4>
+							<h3 className="text-sm md:text-lg font-black text-white uppercase tracking-tighter leading-tight">Kế Hoạch vs Thực Tế</h3>
 						</div>
 					</div>
 					<div className="h-[250px] w-full">
@@ -733,14 +733,14 @@ const Finance = ({ userEmail }) => {
 										borderColor: ['#10b981', '#ef4444'],
 										borderWidth: 1,
 										borderRadius: 8,
-										barThickness: 30,
+										maxBarThickness: 40,
 									},
 									{
 										label: 'Thực Tế',
 										data: [totalInflowActual, totalOutflowActual],
 										backgroundColor: ['#10b981', '#ef4444'],
 										borderRadius: 8,
-										barThickness: 30,
+										maxBarThickness: 40,
 									}
 								]
 							}}
@@ -750,24 +750,24 @@ const Finance = ({ userEmail }) => {
 			</div>
 
 			{/* Chart 3: Tổng Hợp Theo Tháng (Full Width) */}
-			<div className="bg-white/[0.03] border border-white/5 rounded-[32px] p-6 lg:p-8 shadow-2xl mb-12">
-				<div className="flex justify-between items-center mb-8">
-					<div>
-						<h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Xu Thế</h4>
-						<h3 className="text-xl font-black text-white uppercase tracking-tighter">Tổng Hợp Thu Nhập & Chi Tiêu Theo Tháng</h3>
+			<div className="bg-white/[0.03] border border-white/5 rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl mb-12">
+				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
+					<div className="max-w-full">
+						<h4 className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Xu Thế</h4>
+						<h3 className="text-sm md:text-xl font-black text-white uppercase tracking-tighter leading-tight">Tổng Hợp Thu Nhập & Chi Tiêu Hàng Tháng</h3>
 					</div>
 					<div className="flex gap-4">
 						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-							<span className="text-[10px] font-bold text-gray-400 uppercase">Thu Nhập</span>
+							<div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-emerald-500"></div>
+							<span className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase">Thu Nhập</span>
 						</div>
 						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-full bg-red-500"></div>
-							<span className="text-[10px] font-bold text-gray-400 uppercase">Chi Tiêu</span>
+							<div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-red-500"></div>
+							<span className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase">Chi Tiêu</span>
 						</div>
 					</div>
 				</div>
-				<div className="h-[350px] w-full">
+				<div className="h-[250px] md:h-[350px] w-full">
 					<Bar
 						options={{
 							responsive: true,
@@ -790,13 +790,13 @@ const Finance = ({ userEmail }) => {
 									grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
 									ticks: {
 										color: '#64748b',
-										font: { size: 10 },
+										font: { size: 8 },
 										callback: (val) => val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : (val / 1000).toFixed(0) + 'k'
 									}
 								},
 								x: {
 									grid: { display: false, drawBorder: false },
-									ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } }
+									ticks: { color: '#94a3b8', font: { size: 9, weight: 'bold' } }
 								}
 							}
 						}}
@@ -807,15 +807,15 @@ const Finance = ({ userEmail }) => {
 									label: 'Thu Nhập',
 									data: monthlyHistory.map(m => m.income),
 									backgroundColor: '#10b981',
-									borderRadius: 10,
-									barThickness: 35,
+									borderRadius: 6,
+									maxBarThickness: 30,
 								},
 								{
 									label: 'Chi Tiêu',
 									data: monthlyHistory.map(m => m.expense),
 									backgroundColor: '#ef4444',
-									borderRadius: 10,
-									barThickness: 35,
+									borderRadius: 6,
+									maxBarThickness: 30,
 								}
 							]
 						}}
@@ -833,11 +833,11 @@ const Finance = ({ userEmail }) => {
 							exit={{ opacity: 0, scale: 0.95, y: 30 }}
 							className="bg-[#151921] border border-white/10 w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
 						>
-							<form onSubmit={handleAddTransaction} className="p-10">
-								<div className="flex justify-between items-center mb-10">
+							<form onSubmit={handleAddTransaction} className="p-6 md:p-10">
+								<div className="flex justify-between items-center mb-6 md:mb-10">
 									<div>
-										<h3 className="text-2xl font-black tracking-tighter text-white">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
-										<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ Tài Chính' : 'Quản Lý Hồ Sơ Tài Chính'}</p>
+										<h3 className="text-xl md:text-2xl font-black tracking-tighter text-white">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
+										<p className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ' : 'Quản Lý Hồ Sơ'}</p>
 									</div>
 									<button type="button" onClick={() => { setIsEntryModalOpen(false); setEditingId(null); setFormData(initialFormState); }} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-500 hover:text-white transition-all">
 										<X size={20} />
@@ -961,11 +961,11 @@ const Finance = ({ userEmail }) => {
 							onClick={e => e.stopPropagation()}
 							className="bg-[#151921] border border-white/10 w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
 						>
-							<div className="p-10">
-								<div className="flex justify-between items-center mb-10">
+							<div className="p-6 md:p-10">
+								<div className="flex justify-between items-center mb-6 md:mb-10">
 									<div>
-										<h3 className="text-2xl font-black tracking-tighter text-white">Chi Tiết Giao Dịch</h3>
-										<p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+										<h3 className="text-xl md:text-2xl font-black tracking-tighter text-white">Chi Tiết Giao Dịch</h3>
+										<p className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">
 											{selectedTx.type === 'INCOME' ? 'Khoản Thu' : 'Khoản Chi'} • {selectedTx.status === 'MANUAL' ? 'Bản ghi thủ công' : 'Đã đồng bộ ngân hàng'}
 										</p>
 									</div>
