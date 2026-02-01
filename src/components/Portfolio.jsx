@@ -32,7 +32,7 @@ const Portfolio = ({ holdings, refreshProfile }) => {
 				<button
 					onClick={handleRefresh}
 					disabled={loading}
-					className="w-full sm:w-auto text-[10px] font-bold bg-muted hover:bg-white/10 px-6 py-3 rounded-2xl transition-all uppercase tracking-widest border border-faint active:scale-95 disabled:opacity-50"
+					className="w-full sm:w-auto text-[10px] font-bold bg-muted hover:bg-muted px-6 py-3 rounded-2xl transition-all uppercase tracking-widest border border-faint active:scale-95 disabled:opacity-50"
 				>
 					{loading ? 'Đang cập nhật...' : 'Làm mới giá'}
 				</button>

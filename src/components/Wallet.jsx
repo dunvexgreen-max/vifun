@@ -90,7 +90,7 @@ const Wallet = ({ profile, refreshProfile }) => {
 								</div>
 								<button
 									onClick={() => setIsAdjusting(!isAdjusting)}
-									className="p-2.5 rounded-xl bg-muted border border-faint hover:bg-white/10 transition-all text-textSecondary hover:text-textPrimary"
+									className="p-2.5 rounded-xl bg-muted border border-faint hover:bg-muted transition-all text-textSecondary hover:text-textPrimary"
 									title="Điều chỉnh số dư ban đầu"
 								>
 									<RotateCcw size={16} />
@@ -100,7 +100,7 @@ const Wallet = ({ profile, refreshProfile }) => {
 								<p className="font-mono text-xs tracking-[0.2em] opacity-40">{profile.email.toUpperCase()}</p>
 								<div className="flex gap-1">
 									<div className="w-8 h-5 bg-muted rounded-md"></div>
-									<div className="w-8 h-5 bg-white/10 rounded-md"></div>
+									<div className="w-8 h-5 bg-muted rounded-md"></div>
 								</div>
 							</div>
 						</div>

@@ -175,7 +175,7 @@ const Login = ({ onLogin }) => {
 							<button
 								type="button"
 								onClick={() => setStep('input')}
-								className="flex-[0.5] py-4 rounded-2xl bg-muted border border-faint text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+								className="flex-[0.5] py-4 rounded-2xl bg-muted border border-faint text-white font-black text-[10px] uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2"
 							>
 								<ArrowLeft size={16} />
 								QUAY LẠI

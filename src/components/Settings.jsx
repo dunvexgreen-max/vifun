@@ -24,7 +24,7 @@ const Settings = ({ theme, setTheme }) => {
 					<div className="relative z-10 space-y-6">
 						<div className="flex items-center justify-between p-4 rounded-2xl bg-muted border border-faint">
 							<div className="flex gap-4 items-center">
-								<div className={`p-2.5 rounded-xl transition-all ${theme === 'light' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-400'}`}>
+								<div className={`p-2.5 rounded-xl transition-all ${theme === 'light' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-primary'}`}>
 									{theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
 								</div>
 								<div className="flex flex-col">
@@ -57,8 +57,8 @@ const Settings = ({ theme, setTheme }) => {
 								onClick={() => setTheme('dark')}
 								className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-3 ${theme === 'dark' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted border-faint text-textSecondary hover:border-primary/30'}`}
 							>
-								<div className="w-12 h-8 bg-[#0B1424] border border-white/10 rounded-lg flex items-center justify-center">
-									<div className="w-8 h-1 bg-white/10 rounded-full"></div>
+								<div className="w-12 h-8 bg-[#0B1424] border border-faint rounded-lg flex items-center justify-center">
+									<div className="w-8 h-1 bg-muted rounded-full"></div>
 								</div>
 								<span className="text-[10px] font-black uppercase tracking-widest">Tối</span>
 							</button>
@@ -90,7 +90,7 @@ const Settings = ({ theme, setTheme }) => {
 								<span className="text-xs font-black uppercase tracking-wider">Âm thanh</span>
 								<span className="text-[10px] text-textSecondary font-bold">Phát âm thanh khi có biến động</span>
 							</div>
-							<div className="w-10 h-6 bg-white/10 rounded-full flex items-center px-1">
+							<div className="w-10 h-6 bg-muted rounded-full flex items-center px-1">
 								<div className="w-4 h-4 bg-white/40 rounded-full"></div>
 							</div>
 						</div>
