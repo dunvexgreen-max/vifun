@@ -229,12 +229,12 @@ const Dashboard = ({ profile, refreshProfile }) => {
 											{item.quantity} CP · {formatVND(item.value)}
 										</p>
 									</div>
-									<div className={`text-right ${item.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+									<div className={`text-right ${(item.pnl || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
 										<p className="font-black tracking-tighter text-lg">
-											{(item.pnl >= 0 ? '+' : '') + formatVND(item.pnl)}
+											{((item.pnl || 0) >= 0 ? '+' : '') + formatVND(item.pnl || 0)}
 										</p>
 										<p className="text-[10px] font-black underline decoration-2 underline-offset-4 tracking-widest">
-											{(item.pnlPct >= 0 ? '+' : '') + item.pnlPct.toFixed(2)}%
+											{((item.pnlPct || 0) >= 0 ? '+' : '') + (item.pnlPct || 0).toFixed(2)}%
 										</p>
 									</div>
 								</div>

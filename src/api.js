@@ -1,14 +1,19 @@
-const TRADING_GAS_URL = 'https://script.google.com/macros/s/AKfycbx9o6yLvNgHxWggQWaLLDYRRMXQRwROBqltr6fx4jgBzviByYGvaFHNOFKBgUfQMIV0cQ/exec';
-const FINANCE_GAS_URL = 'https://script.google.com/macros/s/AKfycbzs0i9Xzj9pqOXghPxgAdVVLh3Yxfr0bH296T1Ph8TSamsTcROnom8joFcrgTQmkdbJ/exec';
+// URL của Web App sau khi Deploy (Dùng chung cho cả Trading & Finance vì đã gộp Backend)
+// HÃY THAY MÃ URL MỚI NHẤT CỦA BẠN VÀO ĐÂY:
+const DEPLOYMENT_URL = 'https://script.google.com/macros/s/AKfycbzs0i9Xzj9pqOXghPxgAdVVLh3Yxfr0bH296T1Ph8TSamsTcROnom8joFcrgTQmkdbJ/exec';
 
-const isMock = !TRADING_GAS_URL;
+const TRADING_GAS_URL = DEPLOYMENT_URL;
+const FINANCE_GAS_URL = DEPLOYMENT_URL; // Cả 2 cùng trỏ về 1 chỗ
+
+const isMock = !DEPLOYMENT_URL;
 const API_SECRET_KEY = 'STOCKS_SIM_SECURE_V1_2024_@SEC';
 
 export const api = {
 	async call(action, data = {}, target = 'trading', options = { silent: false }) {
 		if (isMock) return mockApi(action, data);
 
-		const url = target === 'finance' ? FINANCE_GAS_URL : TRADING_GAS_URL;
+		// Dù target là gì thì cũng gọi về 1 URL duy nhất
+		const url = DEPLOYMENT_URL;
 
 		let retries = 3;
 		let backoff = 1000;

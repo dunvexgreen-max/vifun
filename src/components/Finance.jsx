@@ -472,35 +472,35 @@ const Finance = ({ userEmail }) => {
 			</div>
 
 			{/* High-level stats - Grid layout for better responsiveness */}
-			<div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-8">
-				<div className="bg-muted p-4 lg:p-6 rounded-[24px] border border-faint flex flex-col justify-between shadow-sm">
+			<div className="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-8">
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
 					<div>
-						<p className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2 lg:mb-3">Thu Nhập</p>
+						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
 						<div className="flex flex-col gap-0.5">
-							<span className="text-lg lg:text-3xl font-black text-success tracking-tighter">{formatVND(totalInflowActual)}</span>
-							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60">KH: {formatVND(totalInflowProjected)}</p>
+							<span className="text-sm md:text-lg lg:text-3xl font-black text-success tracking-tighter truncate">{formatVND(totalInflowActual)}</span>
+							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalInflowProjected)}</p>
 						</div>
 					</div>
 				</div>
-				<div className="bg-muted p-4 lg:p-6 rounded-[24px] border border-faint flex flex-col justify-between shadow-sm">
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
 					<div>
-						<p className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2 lg:mb-3">Chi Tiêu</p>
+						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Chi Tiêu</p>
 						<div className="flex flex-col gap-0.5">
-							<span className="text-lg lg:text-3xl font-black text-danger tracking-tighter">{formatVND(totalOutflowActual)}</span>
-							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60">KH: {formatVND(totalOutflowProjected)}</p>
+							<span className="text-sm md:text-lg lg:text-3xl font-black text-danger tracking-tighter truncate">{formatVND(totalOutflowActual)}</span>
+							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalOutflowProjected)}</p>
 						</div>
 					</div>
 				</div>
-				<div className="bg-muted p-4 lg:p-6 rounded-[24px] border border-faint flex flex-col justify-between shadow-sm">
-					<p className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2 lg:mb-3">LN Ròng</p>
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
+					<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">LN Ròng</p>
 					<div className="flex items-baseline gap-2">
-						<span className="text-lg lg:text-3xl font-black text-primary tracking-tighter">{formatVND(netLiquidity)}</span>
+						<span className={`text-sm md:text-lg lg:text-3xl font-black tracking-tighter truncate ${netLiquidity >= 0 ? 'text-primary' : 'text-danger'}`}>{formatVND(netLiquidity)}</span>
 					</div>
 				</div>
-				<div className="bg-muted p-4 lg:p-6 rounded-[24px] border border-faint flex flex-col justify-between shadow-sm">
-					<div className="flex justify-between items-center mb-2 lg:mb-3">
-						<p className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest">Burn Rate</p>
-						<span className={`text-[10px] lg:text-[11px] font-black ${burnRate >= 100 ? 'text-danger' : 'text-success'}`}>{burnRate.toFixed(0)}%</span>
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
+					<div className="flex justify-between items-center mb-1 md:mb-2 lg:mb-3">
+						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest">Burn Rate</p>
+						<span className={`text-[9px] md:text-[10px] lg:text-[11px] font-black ${burnRate >= 100 ? 'text-danger' : 'text-success'}`}>{burnRate.toFixed(0)}%</span>
 					</div>
 					<div className="h-1.5 lg:h-2 w-full bg-background rounded-full overflow-hidden border border-faint">
 						<motion.div
