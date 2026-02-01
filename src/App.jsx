@@ -24,6 +24,9 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
   }, [theme]);
 
   const fetchProfile = async (email) => {
@@ -80,7 +83,7 @@ function App() {
   );
 
   if (!userEmail || !profile) return (
-    <div className={`min-h-screen bg-background text-textPrimary ${theme}`}>
+    <div className="min-h-screen bg-background text-textPrimary">
       <Login onLogin={handleLogin} />
     </div>
   );
@@ -106,7 +109,7 @@ function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-background text-textPrimary flex overflow-x-hidden transition-colors duration-500 ${theme}`}>
+    <div className="min-h-screen bg-background text-textPrimary flex overflow-x-hidden transition-colors duration-500">
       {/* Sidebar - Responsive */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}>
         <Sidebar
