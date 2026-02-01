@@ -118,20 +118,31 @@ function ensureSheet(ss, name, targetHeaders) {
 }
 
 function extractField(html, labelVi, labelEn) {
-  // Regex linh hoạt hơn: Tìm label, sau đó tìm thẻ <td> tiếp theo chứa giá trị
-  const regex = new RegExp(`(?:${labelVi}|${labelEn})[\\s\\S]*?<td[^>]*>([\\s\\S]*?)</td>`, 'i');
-  const match = html.match(regex);
+  // Chuẩn hóa labels
+  const labelPattern = `(?:${labelVi}|${labelEn})`;
+  
+  // 1. Thử tìm trong bảng (Cấu trúc của VCB, Techcombank)
+  const tdRegex = new RegExp(`${labelPattern}[\\s\\S]*?<td[^>]*>([\\s\\S]*?)</td>`, 'i');
+  let match = html.match(tdRegex);
   if (match) {
-    return match[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    let val = match[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (val) return val;
   }
   
-  // Dự phòng 2: Nếu không nằm trong <td>, thử tìm dạng "Label: Value"
-  const regexAlt = new RegExp(`(?:${labelVi}|${labelEn})\\s*[:\\-]?\\s*([^\\n<]+)`, 'i');
-  const matchAlt = html.match(regexAlt);
-  if (matchAlt) {
-    return matchAlt[1].trim();
+  // 2. Thử tìm dạng inline "Label: Value" (Cấu trúc MB Bank, MoMo)
+  const inlineRegex = new RegExp(`${labelPattern}\\s*[:\\-]?\\s*([^\\n<|]+)`, 'i');
+  match = html.match(inlineRegex);
+  if (match) {
+    let val = match[1].replace(/<[^>]*>/g, '').trim();
+    if (val) return val;
   }
   
+  // 3. Dự phòng cuối cùng: Tìm xung quanh label trong text thuần
+  const plainText = html.replace(/<[^>]*>/g, ' ');
+  const plainRegex = new RegExp(`${labelPattern}\\s*[:\\-]?\\s*([\\d\\.,]+(?:\\s*VND|đ|VND)?)`, 'i');
+  match = plainText.match(plainRegex);
+  if (match) return match[1].trim();
+
   return '';
 }
 
@@ -146,74 +157,127 @@ function syncGmailReceipts(userEmail) {
   const existingIdMap = {};
   data.forEach(r => { if(r[idx.id]) existingIdMap[r[idx.id].toString()] = true; });
 
-  // Mở rộng bộ lọc tìm kiếm để không bỏ sót
+  // Bộ lọc tìm kiếm mở rộng cho tất cả ngân hàng phổ biến
   const queries = [
-    'from:VCBDigibank "Biên lai" OR "Biến động" OR "VietQR"',
-    'from:vib "Thanh toán" OR "giao dịch" OR "biên lai" OR "VIB Checkout"',
+    'from:VCBDigibank "Biên lai" OR "Biến động"',
+    'from:no-reply@techcombank.com.vn OR "Techcombank" "biến động số dư"',
+    'from:mbbank.com.vn OR "MB Bank" "biến động số dư" OR "số dư thay đổi"',
+    'from:ebanking@tpb.com.vn OR "TPBank" "biến động số dư"',
+    'from:customercare@vpbank.com.vn OR "VPBank" "giao dịch"',
     'from:no-reply@momo.vn "Giao dịch thành công"',
-    'subject:"biên lai" OR subject:"giao dịch" OR subject:"biến động"',
-    'category:purchases after:2025/01/01'
+    'from:acb.com.vn "thông báo giao dịch"',
+    'subject:"biên lai" OR subject:"giao dịch" OR subject:"biến động" OR subject:"số dư"',
+    'after:2025/01/01'
   ];
 
   let syncCount = 0;
   let rowsToAppend = [];
 
   queries.forEach(query => {
-    const threads = GmailApp.search(query, 0, 50); // Tăng lên 50 threads
-    const threadMessages = GmailApp.getMessagesForThreads(threads);
-    threadMessages.forEach((messages) => {
-      if (new Date().getTime() - startTime > 240000) return; 
+    try {
+      const threads = GmailApp.search(query, 0, 20); // Giới hạn 20 threads mỗi query để tránh timeout
+      const threadMessages = GmailApp.getMessagesForThreads(threads);
       
-      messages.forEach((msg) => {
-        const id = 'EMAIL_' + msg.getId();
-        
-        if (!existingIdMap[id]) {
+      threadMessages.forEach((messages) => {
+        messages.forEach((msg) => {
+          if (new Date().getTime() - startTime > 240000) return; 
+          
+          const id = 'EMAIL_' + msg.getId();
+          if (existingIdMap[id]) return;
+
           const body = msg.getBody();
           const plainText = msg.getPlainBody();
           const subject = msg.getSubject();
-          
+          const sender = msg.getFrom();
+          const toAddress = msg.getTo();
+
+          // Xác định User chính xác (hỗ trợ cả mail chuyển tiếp)
+          let effectiveUser = userEmail;
+          if (toAddress && toAddress.includes('<')) {
+             effectiveUser = toAddress.match(/<([^>]+)>/)[1].toLowerCase();
+          } else if (toAddress) {
+             effectiveUser = toAddress.toLowerCase();
+          }
+          effectiveUser = effectiveUser.split('+')[0] + (effectiveUser.includes('@') ? '@' + effectiveUser.split('@')[1] : '');
+
+          // Bóc tách Số tiền - Thử nhiều mẫu cho các ngân hàng khác nhau
           let amountStr = extractField(body, 'Số tiền', 'Amount');
           if (!amountStr) amountStr = extractField(plainText, 'Số tiền', 'Amount');
+          if (!amountStr) amountStr = extractField(body, 'Số dư thay đổi', 'Transaction Amount');
           
-          const amount = parseFloat(amountStr.replace(/[^\d]/g, '')) || 0;
+          // MB Bank thường dùng mẫu: "Số tiền GD: 100,000 VND"
+          if (!amountStr && body.includes('MBBANK')) {
+            const mbMatch = body.match(/(?:Số tiền GD|Số tiền|GD|Số tiền thay đổi)[:\-\s]+([\d\.,\s]+(?:VND|đ|VND|d)?)/i);
+            if (mbMatch) amountStr = mbMatch[1];
+          }
+
+          // Techcombank thường dùng bảng HTML
+          if (!amountStr && body.includes('Techcombank')) {
+             const tcbMatch = body.match(/Số tiền giao dịch[\s\S]*?<td[^>]*>([\s\S]*?)<\/td>/i);
+             if (tcbMatch) amountStr = tcbMatch[1];
+          }
+
+          const amount = parseFloat(String(amountStr || "").replace(/[^\d]/g, '')) || 0;
           
           if (amount > 0) {
-            let type = (subject.includes('nhận') || body.includes('+') || body.includes('Ghi có') || body.includes('đã nhận')) ? 'INCOME' : 'EXPENSE';
+            // Nhận diện INCOME / EXPENSE
+            const isIncome = subject.includes('+') || body.includes('+') || 
+                             body.includes('Ghi có') || body.includes('đã nhận') || 
+                             body.includes('đến từ') || body.includes('Hoàn tiền') ||
+                             body.includes('vào tài khoản');
             
-            // QUAN TRỌNG: Khởi tạo mảng theo độ dài thực tế của hàng tiêu đề trong Sheet
+            const type = isIncome ? 'INCOME' : 'EXPENSE';
+            
+            // Xây dựng hàng dữ liệu CHUẨN theo Index tiêu đề hiện tại của Sheet
+            // Điều này đảm bảo không làm xáo trộn data cũ của bạn
             const newRow = new Array(data[0].length).fill('');
             
             if (idx.id !== -1) newRow[idx.id] = id;
             if (idx.date !== -1) newRow[idx.date] = msg.getDate().toISOString();
             if (idx.amount !== -1) newRow[idx.amount] = amount;
             if (idx.actual !== -1) newRow[idx.actual] = amount;
-            if (idx.projected !== -1) newRow[idx.projected] = amount;
+            if (idx.projected !== -1) newRow[idx.projected] = 0; // Giao dịch ngân hàng luôn là thực tế
             if (idx.type !== -1) newRow[idx.type] = type;
-            if (idx.category !== -1) newRow[idx.category] = 'Deep Sync';
+            
+            // Tự động phân loại ngân hàng cho cột Nguồn (Source)
+            let sourceName = 'Ngân hàng';
+            const sLower = (sender + subject + body).toLowerCase();
+            if (sLower.includes('vcb') || sLower.includes('vietcombank')) sourceName = 'Vietcombank';
+            else if (sLower.includes('tcb') || sLower.includes('techcombank')) sourceName = 'Techcombank';
+            else if (sLower.includes('mbbank') || sLower.includes('mb bank')) sourceName = 'MB Bank';
+            else if (sLower.includes('tpb') || sLower.includes('tpbank')) sourceName = 'TP Bank';
+            else if (sLower.includes('vpb') || sLower.includes('vpbank')) sourceName = 'VP Bank';
+            else if (sLower.includes('momo')) sourceName = 'MoMo';
+            
+            if (idx.category !== -1) newRow[idx.category] = sourceName;
             
             let desc = extractField(body, 'Nội dung', 'Details');
             if (!desc) desc = extractField(plainText, 'Nội dung', 'Details');
-            if (idx.description !== -1) newRow[idx.description] = desc || subject;
+            if (!desc) desc = extractField(body, 'Nội dung giao dịch', 'Description');
+            if (!desc) desc = subject;
             
-            if (idx.source !== -1) newRow[idx.source] = 'Ngân hàng';
+            if (idx.description !== -1) newRow[idx.description] = desc;
+            if (idx.source !== -1) newRow[idx.source] = sourceName;
             if (idx.status !== -1) newRow[idx.status] = 'SYNCED';
-            if (idx.email !== -1) newRow[idx.email] = userEmail;
+            if (idx.email !== -1) newRow[idx.email] = effectiveUser;
             
             rowsToAppend.push(newRow);
             existingIdMap[id] = true;
             syncCount++;
           }
-        }
+        });
       });
-    });
+    } catch (e) {
+      Logger.log("Lỗi quét Query [" + query + "]: " + e.message);
+    }
   });
 
   if (rowsToAppend.length > 0) {
-    // Luôn ghi đủ số cột khớp với hàng tiêu đề của Sheet
+    // Ghi vào Sheet cực kỳ an toàn: Luôn dùng đúng số cột của hàng tiêu đề
     sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, data[0].length).setValues(rowsToAppend);
   }
   
-  return { success: true, syncCount: syncCount, message: `Đã đồng bộ ${syncCount} giao dịch mới.` };
+  return { success: true, syncCount: syncCount, message: `Đã đồng bộ ${syncCount} giao dịch mới từ các ngân hàng.` };
 }
 
 function getFinanceTransactions(email) {

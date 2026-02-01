@@ -104,12 +104,10 @@ const Login = ({ onLogin }) => {
 							</div>
 						</div>
 
-						<div className="space-y-2">
-							<div className="flex justify-between items-center ml-1">
-								<label className="text-xs font-bold uppercase tracking-widest text-textSecondary">
-									{mode === 'forgot' ? 'Mật khẩu mới' : 'Mật khẩu'}
-								</label>
-								{mode === 'login' && (
+						{mode === 'login' && (
+							<div className="space-y-2">
+								<div className="flex justify-between items-center ml-1">
+									<label className="text-xs font-bold uppercase tracking-widest text-textSecondary">Mật khẩu</label>
 									<button
 										type="button"
 										onClick={() => { setMode('forgot'); setError(''); }}
@@ -117,27 +115,27 @@ const Login = ({ onLogin }) => {
 									>
 										Quên?
 									</button>
-								)}
+								</div>
+								<div className="relative">
+									<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary" size={18} />
+									<input
+										type={showPassword ? 'text' : 'password'}
+										required
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										className="w-full bg-muted border border-faint rounded-2xl py-4 pl-12 pr-12 focus:border-primary outline-none transition-all placeholder:text-textSecondary"
+										placeholder="••••••••"
+									/>
+									<button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										className="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary hover:text-textPrimary transition-colors"
+									>
+										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+									</button>
+								</div>
 							</div>
-							<div className="relative">
-								<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary" size={18} />
-								<input
-									type={showPassword ? 'text' : 'password'}
-									required
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									className="w-full bg-muted border border-faint rounded-2xl py-4 pl-12 pr-12 focus:border-primary outline-none transition-all placeholder:text-textSecondary"
-									placeholder="••••••••"
-								/>
-								<button
-									type="button"
-									onClick={() => setShowPassword(!showPassword)}
-									className="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary hover:text-textPrimary transition-colors"
-								>
-									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-								</button>
-							</div>
-						</div>
+						)}
 
 						{error && <div className="p-3 rounded-xl bg-danger/10 text-danger text-[11px] font-bold text-center border border-danger/20">{error}</div>}
 
@@ -167,6 +165,31 @@ const Login = ({ onLogin }) => {
 								/>
 							</div>
 							<p className="text-[10px] text-textSecondary text-center mt-2 font-medium tracking-wide">Mã OTP đã được gửi về: <span className="text-primary font-bold">{email}</span></p>
+						</div>
+
+						{/* New Password field in OTP step for Register/Forgot */}
+						<div className="space-y-2">
+							<label className="text-xs font-bold uppercase tracking-widest text-textSecondary ml-1">
+								{mode === 'forgot' ? 'Mật khẩu mới' : 'Mật khẩu'}
+							</label>
+							<div className="relative">
+								<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary" size={18} />
+								<input
+									type={showPassword ? 'text' : 'password'}
+									required
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									className="w-full bg-muted border border-faint rounded-2xl py-4 pl-12 pr-12 focus:border-primary outline-none transition-all placeholder:text-textSecondary"
+									placeholder="••••••••"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassword(!showPassword)}
+									className="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary hover:text-textPrimary transition-colors"
+								>
+									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+								</button>
+							</div>
 						</div>
 
 						{error && <div className="p-3 rounded-xl bg-danger/10 text-danger text-[11px] font-bold text-center border border-danger/20">{error}</div>}
@@ -205,6 +228,7 @@ const Login = ({ onLogin }) => {
 							onClick={() => {
 								setMode(mode === 'login' ? 'register' : 'login');
 								setError('');
+								setPassword('');
 							}}
 							className="text-sm font-bold text-textSecondary hover:text-textPrimary transition-colors"
 						>

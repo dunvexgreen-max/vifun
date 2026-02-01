@@ -15,7 +15,12 @@ import {
 	ChevronRight,
 	X,
 	Trash2,
-	Edit2
+	Edit2,
+	ShieldCheck,
+	Zap,
+	Lock,
+	Mail,
+	CheckSquare
 } from 'lucide-react';
 import {
 	Chart as ChartJS,
@@ -71,6 +76,8 @@ const Finance = ({ userEmail }) => {
 	const itemsPerPage = 5;
 
 	const [notification, setNotification] = useState(null);
+	const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+	const [isPremiumSubscribed, setIsPremiumSubscribed] = useState(false); // Later check from profile
 
 	const fetchFinanceData = async () => {
 		setLoading(true);
@@ -86,6 +93,11 @@ const Finance = ({ userEmail }) => {
 	}, [userEmail]);
 
 	const handleSync = async () => {
+		if (!isPremiumSubscribed) {
+			setIsPremiumModalOpen(true);
+			return;
+		}
+
 		if (syncing) return;
 		setSyncing(true);
 		try {
@@ -104,6 +116,17 @@ const Finance = ({ userEmail }) => {
 			setSyncing(false);
 			setTimeout(() => setNotification(null), 3000);
 		}
+	};
+
+	const handleActivatePremium = () => {
+		setLoading(true);
+		setTimeout(() => {
+			setIsPremiumSubscribed(true);
+			setIsPremiumModalOpen(false);
+			setNotification({ type: 'success', message: 'Kích hoạt Deep Sync thành công!' });
+			setLoading(false);
+			setTimeout(() => setNotification(null), 3000);
+		}, 2000);
 	};
 
 	const handleAddTransaction = async (e) => {
@@ -389,10 +412,14 @@ const Finance = ({ userEmail }) => {
 					<button
 						onClick={handleSync}
 						disabled={syncing}
-						className="flex-1 xl:flex-none glass border border-faint px-4 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2 h-[44px]"
+						className={`flex-1 xl:flex-none glass border border-faint px-4 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2 h-[44px] ${!isPremiumSubscribed ? 'text-amber-500' : ''}`}
 					>
-						<RefreshCw size={14} className={syncing ? 'animate-spin text-primary' : ''} />
-						<span className="inline">{syncing ? '...' : 'Cập nhật'}</span>
+						{isPremiumSubscribed ? (
+							<RefreshCw size={14} className={syncing ? 'animate-spin text-primary' : ''} />
+						) : (
+							<Zap size={14} fill="currentColor" />
+						)}
+						<span className="inline">{syncing ? '...' : (isPremiumSubscribed ? 'Cập nhật' : 'Deep Sync')}</span>
 					</button>
 					<button
 						onClick={() => {
@@ -1143,6 +1170,71 @@ const Finance = ({ userEmail }) => {
 								>
 									Đóng
 								</button>
+							</div>
+						</motion.div>
+					</div>
+				)}
+			</AnimatePresence>
+
+			{/* Premium Agreement Modal */}
+			<AnimatePresence>
+				{isPremiumModalOpen && (
+					<div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="absolute inset-0 bg-black/80 backdrop-blur-md"
+							onClick={() => setIsPremiumModalOpen(false)}
+						/>
+						<motion.div
+							initial={{ scale: 0.9, opacity: 0, y: 20 }}
+							animate={{ scale: 1, opacity: 1, y: 0 }}
+							exit={{ scale: 0.9, opacity: 0, y: 20 }}
+							className="relative bg-surface w-full max-w-xl rounded-[40px] shadow-2xl border border-primary/20 overflow-hidden"
+						>
+							<div className="relative h-32 bg-gradient-to-br from-primary to-blue-700 p-8 flex items-center justify-between">
+								<div className="z-10">
+									<h2 className="text-2xl font-black text-white uppercase tracking-tighter">Deep Sync Premium</h2>
+									<p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mt-1">Hợp đồng điện tử & Cam kết bảo mật</p>
+								</div>
+								<Zap className="text-white/20 absolute right-8 top-1/2 -translate-y-1/2" size={80} fill="currentColor" />
+							</div>
+
+							<div className="p-8 space-y-6">
+								<div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide text-textSecondary text-[11px] leading-relaxed">
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+										<ShieldCheck className="text-success shrink-0" size={20} />
+										<p><span className="text-textPrimary font-bold">Cam kết Quyền riêng tư:</span> Chúng tôi chỉ quét các email liên quan đến biên lai ngân hàng. Tuyệt đối không đọc, lưu trữ hoặc chia sẻ các email cá nhân khác.</p>
+									</div>
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+										<Lock className="text-primary shrink-0" size={20} />
+										<p><span className="text-textPrimary font-bold">Bảo mật Dữ liệu:</span> Toàn bộ quyền truy cập được mã hóa. Bạn có thể thu hồi quyền bất kỳ lúc nào trực tiếp trong cài đặt Google.</p>
+									</div>
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+										<Zap className="text-amber-500 shrink-0" size={20} />
+										<p><span className="text-textPrimary font-bold">Tự động 100%:</span> Sau khi đồng ý, hệ thống sẽ tự động đồng bộ giao dịch từ 20+ ngân hàng phổ biến (VCB, TCB, MB, MoMo...)</p>
+									</div>
+									<div className="p-4 border border-faint rounded-2xl italic opacity-60">
+										Bằng cách nhấn "Tôi đồng ý", bạn xác nhận đã đọc và chấp thuận các điều khoản dịch vụ và chính sách bảo mật của StockSim.
+									</div>
+								</div>
+
+								<div className="flex flex-col gap-3">
+									<button
+										onClick={handleActivatePremium}
+										className="w-full py-4 bg-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3"
+									>
+										<CheckSquare size={18} />
+										Tôi đồng ý và kích hoạt
+									</button>
+									<button
+										onClick={() => setIsPremiumModalOpen(false)}
+										className="w-full py-4 text-textSecondary font-bold text-[10px] uppercase tracking-widest hover:text-textPrimary transition-all"
+									>
+										Để sau
+									</button>
+								</div>
 							</div>
 						</motion.div>
 					</div>
