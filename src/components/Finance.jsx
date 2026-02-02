@@ -57,7 +57,12 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 		type: 'INCOME',
 		category: 'Lương',
 		description: '',
-		source: 'Tiền mặt'
+		source: 'Tiền mặt',
+		orderNo: '',
+		sourceAcc: '',
+		remitter: '',
+		targetAcc: '',
+		targetName: ''
 	};
 	const [formData, setFormData] = useState(initialFormState);
 
@@ -216,7 +221,12 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			type: t.type,
 			category: t.category,
 			description: t.description,
-			source: t.source
+			source: t.source,
+			orderNo: t.orderNo || '',
+			sourceAcc: t.sourceAcc || '',
+			remitter: t.remitter || '',
+			targetAcc: t.targetAcc || '',
+			targetName: t.targetName || ''
 		});
 		setIsEntryModalOpen(true);
 	};
@@ -1165,9 +1175,71 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										<textarea
 											value={formData.description}
 											onChange={e => setFormData({ ...formData, description: e.target.value })}
-											className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-bold text-textPrimary outline-none h-24 resize-none"
+											className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-bold text-textPrimary outline-none h-20 resize-none"
 											placeholder="Chi tiết giao dịch nội bộ..."
 										/>
+									</div>
+
+									{/* Advanced Banking Fields (Collapsible or just standard) */}
+									<div className="pt-4 border-t border-faint space-y-6">
+										<p className="text-[9px] font-black text-blue-500 uppercase tracking-widest text-center">Thông tin ngân hàng (Tùy chọn)</p>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Mã lệnh / Order No</label>
+												<input
+													type="text"
+													value={formData.orderNo}
+													onChange={e => setFormData({ ...formData, orderNo: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
+													placeholder="1284538..."
+												/>
+											</div>
+											<div>
+												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người gửi</label>
+												<input
+													type="text"
+													value={formData.remitter}
+													onChange={e => setFormData({ ...formData, remitter: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
+													placeholder="NGUYEN BA THONG"
+												/>
+											</div>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">TK Nguồn</label>
+												<input
+													type="text"
+													value={formData.sourceAcc}
+													onChange={e => setFormData({ ...formData, sourceAcc: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
+													placeholder="0461000..."
+												/>
+											</div>
+											<div>
+												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">TK Nhận / Ví</label>
+												<input
+													type="text"
+													value={formData.targetAcc}
+													onChange={e => setFormData({ ...formData, targetAcc: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
+													placeholder="3932719..."
+												/>
+											</div>
+										</div>
+
+										<div>
+											<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người hưởng</label>
+											<input
+												type="text"
+												value={formData.targetName}
+												onChange={e => setFormData({ ...formData, targetName: e.target.value })}
+												className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
+												placeholder="PHAM HUU TINH"
+											/>
+										</div>
 									</div>
 								</div>
 
@@ -1208,54 +1280,84 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 									</button>
 								</div>
 
-								<div className="space-y-6">
-									<div className="bg-muted p-6 rounded-3xl border border-faint">
-										<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-2">Mô tả / Nội dung</p>
-										<p className="text-lg font-bold text-textPrimary leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
+								<div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+									<div className="bg-muted p-5 rounded-3xl border border-faint">
+										<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Mô tả / Nội dung</p>
+										<p className="text-base font-bold text-textPrimary leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
 									</div>
 
-									<div className="grid grid-cols-2 gap-4">
-										<div className="bg-muted p-5 rounded-3xl border border-faint">
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Ngày tháng</p>
-											<p className="text-sm font-bold text-textPrimary">{new Date(selectedTx.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+									<div className="grid grid-cols-2 gap-3">
+										<div className="bg-muted p-4 rounded-3xl border border-faint">
+											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Ngày tháng</p>
+											<p className="text-xs font-bold text-textPrimary">{new Date(selectedTx.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
 										</div>
-										<div className="bg-muted p-5 rounded-3xl border border-faint">
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Danh mục</p>
-											<p className="text-sm font-bold text-textPrimary">{selectedTx.category || 'Khác'}</p>
-										</div>
-									</div>
-
-									<div className="grid grid-cols-2 gap-4">
-										<div className="bg-[#151921] p-6 rounded-3xl border border-faint shadow-inner">
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-2">Kế hoạch</p>
-											<p className="text-xl font-black text-primary">{formatVND(selectedTx.projected || 0)}</p>
-										</div>
-										<div className="bg-[#151921] p-6 rounded-3xl border border-faint shadow-inner">
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-2">Thực tế</p>
-											<p className="text-xl font-black text-textPrimary">{formatVND(selectedTx.actual || 0)}</p>
+										<div className="bg-muted p-4 rounded-3xl border border-faint">
+											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Danh mục</p>
+											<p className="text-xs font-bold text-textPrimary">{selectedTx.category || 'Khác'}</p>
 										</div>
 									</div>
 
-									<div className="flex items-center justify-between p-6 bg-muted rounded-3xl border border-faint">
-										<div>
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Chênh lệch</p>
-											<p className={`text-sm font-black uppercase ${selectedTx.type === 'INCOME'
-												? (selectedTx.actual - selectedTx.projected >= 0 ? 'text-success' : 'text-danger')
-												: (selectedTx.projected - selectedTx.actual < 0 ? 'text-danger' : 'text-success')
-												}`}>
-												{formatVND(Math.abs(selectedTx.actual - selectedTx.projected))}
-												<span className="ml-2 text-[8px]">
-													({selectedTx.type === 'INCOME'
-														? (selectedTx.actual >= selectedTx.projected ? 'Vượt thu' : 'Hụt thu')
-														: (selectedTx.actual > selectedTx.projected ? 'Vượt chi' : 'Tiết kiệm')
-													})
-												</span>
-											</p>
+									<div className="grid grid-cols-2 gap-3">
+										<div className="bg-[#151921] p-5 rounded-[24px] border border-faint shadow-inner">
+											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Kế hoạch</p>
+											<p className="text-lg font-black text-primary">{formatVND(selectedTx.projected || 0)}</p>
 										</div>
-										<div className="text-right">
-											<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Nguồn</p>
-											<p className="text-xs font-bold text-textPrimary">{selectedTx.source || 'N/A'}</p>
+										<div className="bg-[#151921] p-5 rounded-[24px] border border-faint shadow-inner">
+											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Thực tế</p>
+											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || 0)}</p>
 										</div>
+									</div>
+
+									{/* Banking Info Section */}
+									<div className="bg-muted/50 p-5 rounded-[32px] border border-dashed border-faint space-y-4">
+										<p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Chi tiết ngân hàng</p>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Mã giao dịch</p>
+												<p className="text-[11px] font-bold text-textPrimary truncate">{selectedTx.orderNo || 'N/A'}</p>
+											</div>
+											<div>
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Ngân hàng / Ví</p>
+												<p className="text-[11px] font-bold text-textPrimary">{selectedTx.source || 'N/A'}</p>
+											</div>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4 border-t border-faint pt-3">
+											<div>
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người gửi</p>
+												<p className="text-[10px] font-black text-textPrimary">{selectedTx.remitter || 'N/A'}</p>
+												<p className="text-[8px] text-textSecondary font-mono">{selectedTx.sourceAcc || ''}</p>
+											</div>
+											<div className="text-right">
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người hưởng</p>
+												<p className="text-[10px] font-black text-textPrimary">{selectedTx.targetName || 'N/A'}</p>
+												<p className="text-[8px] text-textSecondary font-mono">{selectedTx.targetAcc || ''}</p>
+											</div>
+										</div>
+
+										{selectedTx.transDate && (
+											<div className="pt-2 text-center border-t border-faint">
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Thời gian thực tế trên biên lai</p>
+												<p className="text-[10px] font-bold text-textPrimary">{selectedTx.transDate}</p>
+											</div>
+										)}
+									</div>
+
+									<div className="p-4 bg-[#151921] rounded-2xl border border-faint flex justify-between items-center">
+										<p className="text-[9px] font-black text-textSecondary uppercase">Chênh lệch</p>
+										<p className={`text-xs font-black uppercase ${selectedTx.type === 'INCOME'
+											? (selectedTx.actual - selectedTx.projected >= 0 ? 'text-success' : 'text-danger')
+											: (selectedTx.projected - selectedTx.actual < 0 ? 'text-danger' : 'text-success')
+											}`}>
+											{formatVND(Math.abs(selectedTx.actual - selectedTx.projected))}
+											<span className="ml-2 text-[8px] opacity-70">
+												({selectedTx.type === 'INCOME'
+													? (selectedTx.actual >= selectedTx.projected ? 'Vượt thu' : 'Hụt thu')
+													: (selectedTx.actual > selectedTx.projected ? 'Vượt chi' : 'Tiết kiệm')
+												})
+											</span>
+										</p>
 									</div>
 								</div>
 
