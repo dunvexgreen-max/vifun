@@ -48,6 +48,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	const [syncing, setSyncing] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+	const [showBankingFields, setShowBankingFields] = useState(false);
 
 	const [editingId, setEditingId] = useState(null);
 	const initialFormState = {
@@ -229,6 +230,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			targetName: t.targetName || ''
 		});
 		setIsEntryModalOpen(true);
+		setShowBankingFields(!!(t.orderNo || t.sourceAcc || t.remitter || t.targetAcc || t.targetName));
 	};
 
 	const formatVND = (val) => {
@@ -475,6 +477,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							setEditingId(null);
 							setFormData(initialFormState);
 							setIsEntryModalOpen(true);
+							setShowBankingFields(false);
 						}}
 						className="flex-1 xl:flex-none bg-primary hover:bg-primary/90 text-white px-4 lg:px-8 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 h-[44px]"
 					>
@@ -1075,181 +1078,205 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							initial={{ opacity: 0, scale: 0.95, y: 30 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 30 }}
-							className="bg-[#151921] border border-faint w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
+							className="bg-surface border border-faint w-full max-w-lg rounded-[24px] md:rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.2)] max-h-[92vh] flex flex-col"
 						>
-							<form onSubmit={handleAddTransaction} className="p-6 md:p-10">
-								<div className="flex justify-between items-center mb-6 md:mb-10">
-									<div>
-										<h3 className="text-xl md:text-2xl font-black tracking-tighter text-textPrimary">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
-										<p className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ' : 'Quản Lý Hồ Sơ'}</p>
+							<form onSubmit={handleAddTransaction} className="flex flex-col h-full overflow-hidden">
+								<div className="p-5 md:p-10 pb-0 md:pb-0">
+									<div className="flex justify-between items-center mb-4 md:mb-8">
+										<div>
+											<h3 className="text-lg md:text-2xl font-black tracking-tighter text-textPrimary">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
+											<p className="text-[8px] md:text-[10px] font-black text-textSecondary uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ' : 'Quản Lý Hồ Sơ'}</p>
+										</div>
+										<button type="button" onClick={() => { setIsEntryModalOpen(false); setEditingId(null); setFormData(initialFormState); setShowBankingFields(false); }} className="w-8 h-8 md:w-10 md:h-10 bg-muted rounded-full flex items-center justify-center text-textSecondary hover:text-textPrimary transition-all">
+											<X size={18} />
+										</button>
 									</div>
-									<button type="button" onClick={() => { setIsEntryModalOpen(false); setEditingId(null); setFormData(initialFormState); }} className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-textSecondary hover:text-textPrimary transition-all">
-										<X size={20} />
+								</div>
+
+								<div className="flex-1 overflow-y-auto p-5 md:p-10 pt-0 md:pt-0 scrollbar-hide">
+									<div className="space-y-5 md:space-y-8">
+										{/* Type Toggle */}
+										<div className="flex bg-muted p-1 rounded-[16px] md:rounded-[20px] border border-faint">
+											<button
+												type="button"
+												onClick={() => setFormData({ ...formData, type: 'INCOME' })}
+												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'INCOME' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
+											>
+												Khoản Thu
+											</button>
+											<button
+												type="button"
+												onClick={() => setFormData({ ...formData, type: 'EXPENSE' })}
+												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'EXPENSE' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
+											>
+												Khoản Chi
+											</button>
+										</div>
+
+										{/* Date Field */}
+										<div>
+											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Ngày giao dịch</label>
+											<input
+												type="date"
+												required
+												value={formData.date}
+												onChange={e => setFormData({ ...formData, date: e.target.value })}
+												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+											/>
+										</div>
+
+										{/* Comparison Fields */}
+										<div className="grid grid-cols-2 gap-4 md:gap-6">
+											<div>
+												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền Dự kiến</label>
+												<input
+													type="number"
+													value={formData.projected}
+													onChange={e => setFormData({ ...formData, projected: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+													placeholder="0"
+												/>
+											</div>
+											<div>
+												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền Thực tế</label>
+												<input
+													type="number"
+													value={formData.actual}
+													onChange={e => setFormData({ ...formData, actual: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+													placeholder="0"
+												/>
+											</div>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4 md:gap-6">
+											<div>
+												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Danh mục</label>
+												<select
+													value={formData.category}
+													onChange={e => setFormData({ ...formData, category: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary outline-none appearance-none"
+												>
+													<option value="Lương">Lương/Thu nhập</option>
+													<option value="Kinh doanh">Kinh doanh</option>
+													<option value="Sinh hoạt">Sinh hoạt</option>
+													<option value="Đầu tư">Đầu tư</option>
+													<option value="Khác">Khác</option>
+												</select>
+											</div>
+											<div>
+												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Nguồn</label>
+												<input
+													type="text"
+													value={formData.source}
+													onChange={e => setFormData({ ...formData, source: e.target.value })}
+													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary outline-none"
+													placeholder="Ngân hàng, Tiền mặt..."
+												/>
+											</div>
+										</div>
+
+										<div>
+											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Ghi chú</label>
+											<textarea
+												value={formData.description}
+												onChange={e => setFormData({ ...formData, description: e.target.value })}
+												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-bold text-textPrimary outline-none h-16 md:h-20 resize-none"
+												placeholder="Chi tiết giao dịch nội bộ..."
+											/>
+										</div>
+
+										{/* Advanced Banking Fields */}
+										<div className="pt-6 border-t border-faint">
+											<button
+												type="button"
+												onClick={() => setShowBankingFields(!showBankingFields)}
+												className="w-full py-3 bg-muted border border-faint rounded-xl text-[10px] font-black text-blue-500 uppercase tracking-widest hover:bg-muted/50 transition-all flex items-center justify-center gap-2 mb-5"
+											>
+												{showBankingFields ? <ChevronRight size={14} className="rotate-90" /> : <Plus size={14} />}
+												{showBankingFields ? 'Ẩn thông tin ngân hàng' : 'Thông tin ngân hàng (Tùy chọn)'}
+											</button>
+
+											<AnimatePresence>
+												{showBankingFields && (
+													<motion.div
+														initial={{ opacity: 0, height: 0 }}
+														animate={{ opacity: 1, height: 'auto' }}
+														exit={{ opacity: 0, height: 0 }}
+														className="space-y-5 overflow-hidden"
+													>
+														<div className="grid grid-cols-2 gap-4">
+															<div>
+																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Mã giao dịch</label>
+																<input
+																	type="text"
+																	value={formData.orderNo}
+																	onChange={e => setFormData({ ...formData, orderNo: e.target.value })}
+																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	placeholder="Ví d: 12845..."
+																/>
+															</div>
+															<div>
+																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Người gửi</label>
+																<input
+																	type="text"
+																	value={formData.remitter}
+																	onChange={e => setFormData({ ...formData, remitter: e.target.value })}
+																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	placeholder="Tên người gửi..."
+																/>
+															</div>
+														</div>
+
+														<div className="grid grid-cols-2 gap-4">
+															<div>
+																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Số TK Nguồn</label>
+																<input
+																	type="text"
+																	value={formData.sourceAcc}
+																	onChange={e => setFormData({ ...formData, sourceAcc: e.target.value })}
+																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	placeholder="046100..."
+																/>
+															</div>
+															<div>
+																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Số TK Nhận</label>
+																<input
+																	type="text"
+																	value={formData.targetAcc}
+																	onChange={e => setFormData({ ...formData, targetAcc: e.target.value })}
+																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	placeholder="Số tài khoản..."
+																/>
+															</div>
+														</div>
+
+														<div>
+															<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người hưởng</label>
+															<input
+																type="text"
+																value={formData.targetName}
+																onChange={e => setFormData({ ...formData, targetName: e.target.value })}
+																className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																placeholder="Họ và tên người nhận..."
+															/>
+														</div>
+													</motion.div>
+												)}
+											</AnimatePresence>
+										</div>
+									</div>
+								</div>
+
+								<div className="p-5 md:p-10 pt-0">
+									<button
+										type="submit"
+										disabled={isSaving}
+										className="w-full py-4 md:py-5 bg-blue-600 text-textPrimary text-[10px] md:text-xs font-black uppercase tracking-widest rounded-2xl md:rounded-3xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
+									>
+										{isSaving ? 'Đang xử lý...' : (editingId ? 'Cập nhật bản ghi' : 'Xác nhận bản ghi')}
 									</button>
 								</div>
-
-								<div className="space-y-8">
-									{/* Type Toggle */}
-									<div className="flex bg-muted p-1.5 rounded-[20px] border border-faint">
-										<button
-											type="button"
-											onClick={() => setFormData({ ...formData, type: 'INCOME' })}
-											className={`flex-1 py-4 rounded-[14px] text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'INCOME' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
-										>
-											Khoản Thu
-										</button>
-										<button
-											type="button"
-											onClick={() => setFormData({ ...formData, type: 'EXPENSE' })}
-											className={`flex-1 py-4 rounded-[14px] text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'EXPENSE' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
-										>
-											Khoản Chi
-										</button>
-									</div>
-
-									{/* Date Field */}
-									<div>
-										<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Ngày giao dịch</label>
-										<input
-											type="date"
-											required
-											value={formData.date}
-											onChange={e => setFormData({ ...formData, date: e.target.value })}
-											className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
-										/>
-									</div>
-
-									{/* Comparison Fields */}
-									<div className="grid grid-cols-2 gap-6">
-										<div>
-											<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Số tiền Dự kiến</label>
-											<input
-												type="number"
-												value={formData.projected}
-												onChange={e => setFormData({ ...formData, projected: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
-												placeholder="0"
-											/>
-										</div>
-										<div>
-											<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Số tiền Thực tế</label>
-											<input
-												type="number"
-												value={formData.actual}
-												onChange={e => setFormData({ ...formData, actual: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
-												placeholder="0"
-											/>
-										</div>
-									</div>
-
-									<div className="grid grid-cols-2 gap-6">
-										<div>
-											<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Danh mục</label>
-											<select
-												value={formData.category}
-												onChange={e => setFormData({ ...formData, category: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-black text-textPrimary outline-none appearance-none"
-											>
-												<option value="Lương">Lương/Thu nhập</option>
-												<option value="Kinh doanh">Kinh doanh</option>
-												<option value="Sinh hoạt">Sinh hoạt</option>
-												<option value="Đầu tư">Đầu tư</option>
-												<option value="Khác">Khác</option>
-											</select>
-										</div>
-										<div>
-											<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Nguồn</label>
-											<input
-												type="text"
-												value={formData.source}
-												onChange={e => setFormData({ ...formData, source: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-black text-textPrimary outline-none"
-												placeholder="Ngân hàng, Tiền mặt..."
-											/>
-										</div>
-									</div>
-
-									<div>
-										<label className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-3">Ghi chú</label>
-										<textarea
-											value={formData.description}
-											onChange={e => setFormData({ ...formData, description: e.target.value })}
-											className="w-full bg-muted border border-faint rounded-2xl py-4 px-6 text-xs font-bold text-textPrimary outline-none h-20 resize-none"
-											placeholder="Chi tiết giao dịch nội bộ..."
-										/>
-									</div>
-
-									{/* Advanced Banking Fields (Collapsible or just standard) */}
-									<div className="pt-4 border-t border-faint space-y-6">
-										<p className="text-[9px] font-black text-blue-500 uppercase tracking-widest text-center">Thông tin ngân hàng (Tùy chọn)</p>
-
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Mã lệnh / Order No</label>
-												<input
-													type="text"
-													value={formData.orderNo}
-													onChange={e => setFormData({ ...formData, orderNo: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
-													placeholder="1284538..."
-												/>
-											</div>
-											<div>
-												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người gửi</label>
-												<input
-													type="text"
-													value={formData.remitter}
-													onChange={e => setFormData({ ...formData, remitter: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
-													placeholder="NGUYEN BA THONG"
-												/>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">TK Nguồn</label>
-												<input
-													type="text"
-													value={formData.sourceAcc}
-													onChange={e => setFormData({ ...formData, sourceAcc: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
-													placeholder="0461000..."
-												/>
-											</div>
-											<div>
-												<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">TK Nhận / Ví</label>
-												<input
-													type="text"
-													value={formData.targetAcc}
-													onChange={e => setFormData({ ...formData, targetAcc: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
-													placeholder="3932719..."
-												/>
-											</div>
-										</div>
-
-										<div>
-											<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người hưởng</label>
-											<input
-												type="text"
-												value={formData.targetName}
-												onChange={e => setFormData({ ...formData, targetName: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary outline-none"
-												placeholder="PHAM HUU TINH"
-											/>
-										</div>
-									</div>
-								</div>
-
-								<button
-									type="submit"
-									disabled={isSaving}
-									className="w-full mt-10 py-5 bg-blue-600 text-textPrimary text-xs font-black uppercase tracking-widest rounded-3xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
-								>
-									{isSaving ? 'Đang xử lý...' : (editingId ? 'Cập nhật bản ghi' : 'Xác nhận bản ghi')}
-								</button>
 							</form>
 						</motion.div>
 					</div>
@@ -1265,7 +1292,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 30 }}
 							onClick={e => e.stopPropagation()}
-							className="bg-[#151921] border border-faint w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
+							className="bg-surface border border-faint w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
 						>
 							<div className="p-6 md:p-10">
 								<div className="flex justify-between items-center mb-6 md:mb-10">
@@ -1280,7 +1307,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 									</button>
 								</div>
 
-								<div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+								<div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
 									<div className="bg-muted p-5 rounded-3xl border border-faint">
 										<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Mô tả / Nội dung</p>
 										<p className="text-base font-bold text-textPrimary leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
@@ -1297,54 +1324,52 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										</div>
 									</div>
 
+									{/* Banking Info Section - Highlighted Recipients */}
+									<div className="bg-blue-500/5 p-5 rounded-[32px] border border-dashed border-blue-500/20 space-y-4">
+										<div className="flex justify-between items-center">
+											<p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Chi tiết giao dịch</p>
+											<span className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[8px] font-bold rounded-lg uppercase">{selectedTx.source || 'Ngân hàng'}</span>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div className="p-3 bg-surface rounded-2xl border border-faint">
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người gửi</p>
+												<p className="text-[10px] font-black text-textPrimary truncate">{selectedTx.remitter || 'N/A'}</p>
+												<p className="text-[8px] text-textSecondary font-mono mt-0.5">{selectedTx.sourceAcc || ''}</p>
+											</div>
+											<div className="p-3 bg-surface rounded-2xl border border-faint text-right">
+												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người hưởng</p>
+												<p className="text-[10px] font-black text-textPrimary truncate">{selectedTx.targetName || 'N/A'}</p>
+												<p className="text-[8px] text-textSecondary font-mono mt-0.5">{selectedTx.targetAcc || ''}</p>
+											</div>
+										</div>
+
+										<div className="flex justify-between items-center px-1">
+											<div>
+												<p className="text-[8px] font-black text-textSecondary uppercase">Mã giao dịch</p>
+												<p className="text-[10px] font-bold text-textPrimary">{selectedTx.orderNo || 'N/A'}</p>
+											</div>
+											{selectedTx.transDate && (
+												<div className="text-right">
+													<p className="text-[8px] font-black text-textSecondary uppercase">Thời gian thực tế</p>
+													<p className="text-[10px] font-bold text-textPrimary">{selectedTx.transDate}</p>
+												</div>
+											)}
+										</div>
+									</div>
+
 									<div className="grid grid-cols-2 gap-3">
-										<div className="bg-[#151921] p-5 rounded-[24px] border border-faint shadow-inner">
+										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
 											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Kế hoạch</p>
 											<p className="text-lg font-black text-primary">{formatVND(selectedTx.projected || 0)}</p>
 										</div>
-										<div className="bg-[#151921] p-5 rounded-[24px] border border-faint shadow-inner">
+										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
 											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Thực tế</p>
 											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || 0)}</p>
 										</div>
 									</div>
 
-									{/* Banking Info Section */}
-									<div className="bg-muted/50 p-5 rounded-[32px] border border-dashed border-faint space-y-4">
-										<p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Chi tiết ngân hàng</p>
-
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Mã giao dịch</p>
-												<p className="text-[11px] font-bold text-textPrimary truncate">{selectedTx.orderNo || 'N/A'}</p>
-											</div>
-											<div>
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Ngân hàng / Ví</p>
-												<p className="text-[11px] font-bold text-textPrimary">{selectedTx.source || 'N/A'}</p>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-2 gap-4 border-t border-faint pt-3">
-											<div>
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người gửi</p>
-												<p className="text-[10px] font-black text-textPrimary">{selectedTx.remitter || 'N/A'}</p>
-												<p className="text-[8px] text-textSecondary font-mono">{selectedTx.sourceAcc || ''}</p>
-											</div>
-											<div className="text-right">
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người hưởng</p>
-												<p className="text-[10px] font-black text-textPrimary">{selectedTx.targetName || 'N/A'}</p>
-												<p className="text-[8px] text-textSecondary font-mono">{selectedTx.targetAcc || ''}</p>
-											</div>
-										</div>
-
-										{selectedTx.transDate && (
-											<div className="pt-2 text-center border-t border-faint">
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Thời gian thực tế trên biên lai</p>
-												<p className="text-[10px] font-bold text-textPrimary">{selectedTx.transDate}</p>
-											</div>
-										)}
-									</div>
-
-									<div className="p-4 bg-[#151921] rounded-2xl border border-faint flex justify-between items-center">
+									<div className="p-4 bg-muted/30 rounded-2xl border border-faint flex justify-between items-center">
 										<p className="text-[9px] font-black text-textSecondary uppercase">Chênh lệch</p>
 										<p className={`text-xs font-black uppercase ${selectedTx.type === 'INCOME'
 											? (selectedTx.actual - selectedTx.projected >= 0 ? 'text-success' : 'text-danger')
@@ -1371,10 +1396,10 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						</motion.div>
 					</div>
 				)}
-			</AnimatePresence>
+			</AnimatePresence >
 
 			{/* Premium Agreement Modal */}
-			<AnimatePresence>
+			< AnimatePresence >
 				{isPremiumModalOpen && (
 					<div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
 						<motion.div
@@ -1436,7 +1461,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						</motion.div>
 					</div>
 				)}
-			</AnimatePresence>
+			</AnimatePresence >
 
 			<style>{`
 				.glass {
@@ -1455,7 +1480,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					.p-responsive { padding: 1rem; }
 				}
 			`}</style>
-		</div>
+		</div >
 	);
 };
 

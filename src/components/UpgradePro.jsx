@@ -227,14 +227,22 @@ const UpgradePro = ({ userEmail }) => {
 									</div>
 								)}
 
-								<div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl animate-pulse">
+								<div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
 									<p className="text-[9px] font-black text-amber-500 uppercase tracking-widest leading-relaxed mb-1">
 										Nội dung chuyển khoản (Bắt buộc):
 									</p>
-									<p className="text-sm font-black text-amber-600">
-										UPGRADE PRO {userEmail.split('@')[0].toUpperCase()}
-									</p>
+									<div className="flex justify-between items-center group/copy cursor-pointer" onClick={() => {
+										const content = `UPGRADE PRO ${userEmail.split('@')[0].toUpperCase()}`;
+										navigator.clipboard.writeText(content);
+										alert('Đã sao chép nội dung chuyển khoản!');
+									}}>
+										<p className="text-sm font-black text-amber-600">
+											UPGRADE PRO {userEmail.split('@')[0].toUpperCase()}
+										</p>
+										<span className="text-[8px] font-black text-amber-500 bg-amber-500/20 px-2 py-0.5 rounded opacity-0 group-hover/copy:opacity-100 transition-all uppercase">Sao chép</span>
+									</div>
 								</div>
+								<p className="text-[9px] text-textSecondary font-bold italic">* Vui lòng ghi đúng nội dung để hệ thống tự động quy đổi cấp độ tài khoản.</p>
 							</div>
 
 							<div className="relative aspect-square bg-white rounded-3xl p-4 flex items-center justify-center shadow-inner">
@@ -246,9 +254,10 @@ const UpgradePro = ({ userEmail }) => {
 											// VietQR chuẩn cho App Ngân hàng
 											return `https://img.vietqr.io/image/VCB-${import.meta.env.VITE_BANK_ACCOUNT_NUMBER}-compact.png?amount=300000&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(import.meta.env.VITE_BANK_ACCOUNT_NAME)}`;
 										} else {
-											// Momo Format (Giữ nguyên cho ví Momo)
-											const momoLink = `https://me.momo.vn/${import.meta.env.VITE_MOMO_PHONE}?amount=300000&message=${encodeURIComponent(content)}`;
-											return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(momoLink)}`;
+											// Momo Format 2|99 (Sử dụng chuỗi định dạng quét trực tiếp trong App Momo)
+											// Cấu trúc: 2|99|PHONE|NAME|EMAIL|0|0|AMOUNT|CONTENT|transfer_myqr
+											const momoData = `2|99|${import.meta.env.VITE_MOMO_PHONE}|${import.meta.env.VITE_BANK_ACCOUNT_NAME}||0|0|300000|${content}|transfer_myqr`;
+											return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(momoData)}`;
 										}
 									})()}
 									alt="QR Payment"
