@@ -75,7 +75,7 @@ const Login = ({ onLogin }) => {
 					<div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/30">
 						{mode === 'forgot' ? <RefreshCw size={32} className="text-white" /> : <ShieldCheck size={32} className="text-white" />}
 					</div>
-					<h1 className="text-3xl font-black tracking-tight mb-2">StockSim</h1>
+					<h1 className="text-3xl font-black tracking-tight mb-2">Vifun</h1>
 					<p className="text-textSecondary font-medium text-center text-sm">
 						{step === 'otp'
 							? 'Xác thực địa chỉ Email'

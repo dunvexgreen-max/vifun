@@ -26,8 +26,8 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, setSidebarOpen, menuConfig
 			</button>
 
 			<div className="flex items-center gap-3 mb-10 px-2 lg:px-4">
-				<div className="w-10 h-10 bg-gradient-to-br from-primary to-primaryHover rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-primary/20">S</div>
-				<span className="text-2xl font-black tracking-tighter text-textPrimary">StockSim</span>
+				<div className="w-10 h-10 bg-gradient-to-br from-primary to-primaryHover rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-primary/20">V</div>
+				<span className="text-2xl font-black tracking-tighter text-textPrimary">Vifun</span>
 			</div>
 
 			<nav className="flex-1 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">

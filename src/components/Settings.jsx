@@ -210,7 +210,7 @@ const Settings = ({ theme, setTheme, menuConfig, updateSettings }) => {
 
 			<div className="pt-4 border-t border-faint">
 				<p className="text-[9px] text-textSecondary text-center uppercase font-black tracking-[0.2em] opacity-40 leading-relaxed">
-					⚠️ StockSim v2.0.4 - Phiên bản thử nghiệm.<br />Một số cài đặt nâng cao sẽ được cập nhật sớm.
+					⚠️ Vifun v2.0.4 - Phiên bản thử nghiệm.<br />Một số cài đặt nâng cao sẽ được cập nhật sớm.
 				</p>
 			</div>
 		</div>

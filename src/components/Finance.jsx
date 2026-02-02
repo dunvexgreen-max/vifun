@@ -1311,7 +1311,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										<p><span className="text-textPrimary font-bold">Tự động 100%:</span> Sau khi đồng ý, hệ thống sẽ tự động đồng bộ giao dịch từ 20+ ngân hàng phổ biến (VCB, TCB, MB, MoMo...)</p>
 									</div>
 									<div className="p-4 border border-faint rounded-2xl italic opacity-60">
-										Bằng cách nhấn "Tôi đồng ý", bạn xác nhận đã đọc và chấp thuận các điều khoản dịch vụ và chính sách bảo mật của StockSim.
+										Bằng cách nhấn "Tôi đồng ý", bạn xác nhận đã đọc và chấp thuận các điều khoản dịch vụ và chính sách bảo mật của Vifun.
 									</div>
 								</div>
 
