@@ -22,6 +22,8 @@ const StatCard = ({ title, value, change, icon: Icon }) => (
 
 const Dashboard = ({ profile, refreshProfile }) => {
 	const [isRefreshing, setIsRefreshing] = React.useState(false);
+	const [historyPage, setHistoryPage] = React.useState(1);
+
 	const formatVND = (val) => new Intl.NumberFormat('vi-VN').format(Math.round(val)) + ' đ';
 
 	const handleRefresh = async () => {
@@ -48,6 +50,11 @@ const Dashboard = ({ profile, refreshProfile }) => {
 	const totalInvestment = profile.totalInvestment || 0;
 	const stockValue = totalAssets - (profile.balance || 0);
 	const cashWeight = totalAssets > 0 ? ((profile.balance || 0) / totalAssets) * 100 : 100;
+
+	const itemsPerPage = 5;
+	const totalHistoryItems = profile.recentHistory?.length || 0;
+	const totalHistoryPages = Math.ceil(totalHistoryItems / itemsPerPage);
+	const currentHistory = profile.recentHistory?.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage) || [];
 
 	return (
 		<div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500">
@@ -146,7 +153,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
 
 					<div className="glass p-8 rounded-[40px] overflow-hidden border-faint">
 						<div className="flex justify-between items-center mb-10 px-2">
-							<h2 className="text-xl font-black tracking-tight uppercase tracking-[0.1em]">Lệnh mới nhất</h2>
+							<h2 className="text-xl font-black tracking-tight uppercase tracking-[0.1em]">Lãi / Lỗ ròng</h2>
 							<button className="text-[9px] font-black text-primary uppercase tracking-[0.3em] bg-primary/5 px-5 py-2.5 rounded-2xl border border-primary/10 hover:bg-primary/10 transition-all active:scale-95">Xem chi tiết</button>
 						</div>
 						<div className="overflow-x-auto custom-scrollbar scroll-smooth-touch">
@@ -160,7 +167,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-faint">
-									{profile.recentHistory?.slice(0, 5).map((item, i) => (
+									{currentHistory.map((item, i) => (
 										<tr key={i} className="group hover:bg-muted transition-colors">
 											<td className="py-6 pl-2 font-black text-textPrimary text-lg tracking-tighter group-hover:text-primary transition-colors">{item.symbol}</td>
 											<td className="py-6">
@@ -214,6 +221,37 @@ const Dashboard = ({ profile, refreshProfile }) => {
 								</tbody>
 							</table>
 						</div>
+
+						{/* Pagination Controls */}
+						{totalHistoryPages > 1 && (
+							<div className="flex items-center justify-center gap-2 mt-6">
+								<button
+									onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+									disabled={historyPage === 1}
+									className="p-2 rounded-xl border border-faint hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+								>
+									<TrendingDown className="rotate-90" size={14} />
+								</button>
+								<div className="flex gap-1">
+									{Array.from({ length: totalHistoryPages }, (_, i) => i + 1).map(p => (
+										<button
+											key={p}
+											onClick={() => setHistoryPage(p)}
+											className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${historyPage === p ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-muted text-textSecondary'}`}
+										>
+											{p}
+										</button>
+									))}
+								</div>
+								<button
+									onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+									disabled={historyPage === totalHistoryPages}
+									className="p-2 rounded-xl border border-faint hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+								>
+									<TrendingDown className="-rotate-90" size={14} />
+								</button>
+							</div>
+						)}
 					</div>
 				</div>
 
