@@ -1,6 +1,6 @@
 // URL của Web App sau khi Deploy (Dùng chung cho cả Trading & Finance vì đã gộp Backend)
 // HÃY THAY MÃ URL MỚI NHẤT CỦA BẠN VÀO ĐÂY:
-const DEPLOYMENT_URL = 'https://script.google.com/macros/s/AKfycbzs0i9Xzj9pqOXghPxgAdVVLh3Yxfr0bH296T1Ph8TSamsTcROnom8joFcrgTQmkdbJ/exec';
+const DEPLOYMENT_URL = 'https://script.google.com/macros/s/AKfycbwdW9xxcTVAhlghyO204RrMMqOYiyyI8MNRdQMdHY42HF-CNgAEnkBroBpTdwCOMijz/exec';
 
 const TRADING_GAS_URL = DEPLOYMENT_URL;
 const FINANCE_GAS_URL = DEPLOYMENT_URL; // Cả 2 cùng trỏ về 1 chỗ

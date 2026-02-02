@@ -1,15 +1,94 @@
-import React from 'react';
-import { Sun, Moon, Monitor, Shield, Bell, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sun, Moon, Monitor, Shield, Bell, User, LayoutDashboard, ArrowLeftRight, Briefcase, History as HistoryIcon, Wallet, DollarSign, Save } from 'lucide-react';
 
-const Settings = ({ theme, setTheme }) => {
+const Settings = ({ theme, setTheme, menuConfig, updateSettings }) => {
+	const [localConfig, setLocalConfig] = useState(menuConfig);
+	const [isSaving, setIsSaving] = useState(false);
+	const [showSuccess, setShowSuccess] = useState(false);
+
+	const toggleMenu = (key) => {
+		setLocalConfig(prev => ({ ...prev, [key]: !prev[key] }));
+	};
+
+	const handleSave = async () => {
+		setIsSaving(true);
+		try {
+			await updateSettings(localConfig);
+			setShowSuccess(true);
+			setTimeout(() => setShowSuccess(false), 3000);
+		} catch (error) {
+			console.error("Lỗi lưu cài đặt:", error);
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const menuOptions = [
+		{ id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+		{ id: 'trade', label: 'Giao dịch', icon: ArrowLeftRight },
+		{ id: 'portfolio', label: 'Danh mục', icon: Briefcase },
+		{ id: 'history', label: 'Lịch sử', icon: HistoryIcon },
+		{ id: 'wallet', label: 'Ví tiền', icon: Wallet },
+		{ id: 'finance', label: 'Thu chi', icon: DollarSign },
+	];
+
 	return (
-		<div className="max-w-4xl mx-auto space-y-6 lg:space-y-8 animate-in side-in-from-right-5 duration-500">
-			<div className="px-2">
-				<h2 className="text-xl lg:text-2xl font-black uppercase tracking-tight">Cài đặt hệ thống</h2>
-				<p className="text-textSecondary font-bold text-xs lg:text-sm mt-1 uppercase tracking-widest opacity-60">Tùy chỉnh trải nghiệm của bạn</p>
+		<div className="max-w-4xl mx-auto space-y-6 lg:space-y-8 animate-in side-in-from-right-5 duration-500 pb-20">
+			<div className="px-2 flex justify-between items-end">
+				<div>
+					<h2 className="text-xl lg:text-2xl font-black uppercase tracking-tight">Cài đặt hệ thống</h2>
+					<p className="text-textSecondary font-bold text-xs lg:text-sm mt-1 uppercase tracking-widest opacity-60">Tùy chỉnh trải nghiệm của bạn</p>
+				</div>
+				<div className="flex flex-col items-end gap-2">
+					<button
+						onClick={handleSave}
+						disabled={isSaving}
+						className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${isSaving ? 'bg-primary/20 text-primary animate-pulse' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primaryHover'}`}
+					>
+						<Save size={16} />
+						{isSaving ? 'Đang lưu...' : 'Lưu cài đặt'}
+					</button>
+					{showSuccess && (
+						<span className="text-success text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2">
+							✓ Đã lưu & Cập nhật danh sách menu!
+						</span>
+					)}
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+				{/* Quản lý Menu */}
+				<div className="glass p-6 lg:p-8 rounded-[40px] border-faint space-y-8 overflow-hidden relative group md:col-span-2">
+					<div className="absolute -right-10 -top-10 w-40 h-40 bg-success/10 rounded-full blur-3xl group-hover:bg-success/20 transition-all duration-700"></div>
+
+					<div className="relative z-10 flex items-center gap-4">
+						<div className="p-3 bg-success/10 rounded-2xl text-success">
+							<Monitor size={24} strokeWidth={2.5} />
+						</div>
+						<h3 className="text-lg font-black tracking-tight uppercase">Quản lý Menu (Hiện/Ẩn)</h3>
+					</div>
+
+					<div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+						{menuOptions.map(opt => (
+							<div key={opt.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted border border-faint hover:border-primary/30 transition-all">
+								<div className="flex gap-4 items-center">
+									<div className={`p-2 rounded-xl bg-primary/10 text-primary`}>
+										<opt.icon size={18} />
+									</div>
+									<span className="text-xs font-black uppercase tracking-wider">{opt.label}</span>
+								</div>
+
+								<button
+									onClick={() => toggleMenu(opt.id)}
+									className={`w-12 h-7 rounded-full transition-all relative flex items-center px-1 ${localConfig[opt.id] !== false ? 'bg-success shadow-lg shadow-success/20' : 'bg-textSecondary/20'}`}
+								>
+									<div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${localConfig[opt.id] !== false ? 'translate-x-5' : 'translate-x-0'}`}></div>
+								</button>
+							</div>
+						))}
+					</div>
+				</div>
+
 				{/* Giao diện */}
 				<div className="glass p-6 lg:p-8 rounded-[40px] border-faint space-y-8 overflow-hidden relative group">
 					<div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>

@@ -20,7 +20,8 @@ import {
 	Zap,
 	Lock,
 	Mail,
-	CheckSquare
+	CheckSquare,
+	Sparkles
 } from 'lucide-react';
 import {
 	Chart as ChartJS,
@@ -43,7 +44,7 @@ ChartJS.register(
 	Legend
 );
 
-const Finance = ({ userEmail }) => {
+const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	const [syncing, setSyncing] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -77,7 +78,7 @@ const Finance = ({ userEmail }) => {
 
 	const [notification, setNotification] = useState(null);
 	const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
-	const [isPremiumSubscribed, setIsPremiumSubscribed] = useState(false); // Later check from profile
+	const [isPremiumSubscribed, setIsPremiumSubscribed] = useState(isPro);
 
 	const fetchFinanceData = async () => {
 		setLoading(true);
@@ -91,7 +92,7 @@ const Finance = ({ userEmail }) => {
 				setTransactions(transData);
 			}
 
-			if (connStatus && connStatus.connected) {
+			if (isPro || (connStatus && connStatus.connected)) {
 				setIsPremiumSubscribed(true);
 			}
 		} catch (e) {
@@ -102,11 +103,11 @@ const Finance = ({ userEmail }) => {
 
 	useEffect(() => {
 		fetchFinanceData();
-	}, [userEmail]);
+	}, [userEmail, isPro]);
 
 	const handleSync = async () => {
-		if (!isPremiumSubscribed) {
-			setIsPremiumModalOpen(true);
+		if (!isPro) {
+			setNotification({ type: 'info', message: 'Vui lòng nâng cấp gói Pro để dùng tính năng này!' });
 			return;
 		}
 
@@ -471,15 +472,71 @@ const Finance = ({ userEmail }) => {
 				</div>
 			</div>
 
+			{isPro && subStart && subEnd && (
+				<div className="mb-8 glass p-6 rounded-[32px] border-emerald-500/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group bg-emerald-500/5">
+					<div className="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all"></div>
+					<div className="relative z-10 flex items-center gap-6">
+						<div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 animate-pulse">
+							<ShieldCheck size={24} />
+						</div>
+						<div>
+							<h3 className="text-lg font-black uppercase tracking-tight text-emerald-500">Tài khoản đã nâng cấp tính năng</h3>
+							<div className="flex flex-wrap gap-4 mt-2">
+								<p className="text-textSecondary font-bold text-xs flex items-center gap-1.5">
+									<CheckCircle2 size={14} className="text-emerald-500" />
+									Ngày kích hoạt: <span className="text-textPrimary">{new Date(subStart).toLocaleDateString('vi-VN')}</span>
+								</p>
+								<div className="w-px h-4 bg-faint hidden md:block"></div>
+								<p className="text-textSecondary font-bold text-xs flex items-center gap-1.5">
+									<Clock size={14} className="text-emerald-500" />
+									Ngày kết thúc: <span className="text-textPrimary">{new Date(subEnd).toLocaleDateString('vi-VN')}</span>
+								</p>
+							</div>
+						</div>
+					</div>
+					<div className="relative z-10 px-6 py-2 bg-emerald-500/10 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+						STOCKSIM PRO
+					</div>
+				</div>
+			)}
+
+			{!isPro && (
+				<div className="mb-8 glass p-6 rounded-[32px] border-primary/30 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
+					<div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all"></div>
+					<div className="relative z-10 flex items-center gap-6">
+						<div className="p-4 bg-primary/10 rounded-2xl text-primary animate-bounce">
+							<Sparkles size={24} />
+						</div>
+						<div>
+							<h3 className="text-lg font-black uppercase tracking-tight">Tự động hóa Thu Chi ngay hôm nay!</h3>
+							<p className="text-textSecondary font-bold text-xs">Nâng cấp gói Pro (300k/năm) để tự động hóa việc nhập liệu từ email ngân hàng.</p>
+						</div>
+					</div>
+					<button
+						onClick={() => setActiveTab('upgrade')}
+						className="relative z-10 px-8 py-3 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primaryHover transition-all"
+					>
+						Khám phá gói Pro
+					</button>
+				</div>
+			)}
+
 			{/* High-level stats - Grid layout for better responsiveness */}
 			<div className="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-8">
 				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
-					<div>
-						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
-						<div className="flex flex-col gap-0.5">
-							<span className="text-sm md:text-lg lg:text-3xl font-black text-success tracking-tighter truncate">{formatVND(totalInflowActual)}</span>
-							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalInflowProjected)}</p>
+					<div className="flex justify-between items-start">
+						<div>
+							<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
+							<div className="flex flex-col gap-0.5">
+								<span className="text-sm md:text-lg lg:text-3xl font-black text-success tracking-tighter truncate">{formatVND(totalInflowActual)}</span>
+								<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalInflowProjected)}</p>
+							</div>
 						</div>
+						{isPro && subEnd && (
+							<div className="px-2 py-1 bg-primary/10 rounded-lg border border-primary/10">
+								<p className="text-[7px] font-black text-primary uppercase">Pro: {new Date(subEnd).toLocaleDateString('vi-VN')}</p>
+							</div>
+						)}
 					</div>
 				</div>
 				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">

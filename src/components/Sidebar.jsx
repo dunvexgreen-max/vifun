@@ -1,8 +1,8 @@
 import React from 'react';
 import { LayoutDashboard, ArrowLeftRight, Briefcase, History, Wallet, Settings, LogOut, DollarSign, X } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab, onLogout, setSidebarOpen }) => {
-	const menuItems = [
+const Sidebar = ({ activeTab, setActiveTab, onLogout, setSidebarOpen, menuConfig }) => {
+	const allItems = [
 		{ id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
 		{ id: 'trade', label: 'Giao dịch', icon: ArrowLeftRight },
 		{ id: 'portfolio', label: 'Danh mục', icon: Briefcase },
@@ -11,6 +11,9 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, setSidebarOpen }) => {
 		{ id: 'finance', label: 'Thu chi', icon: DollarSign },
 		{ id: 'settings', label: 'Cài đặt', icon: Settings },
 	];
+
+	// Lọc menu dựa trên cấu hình người dùng (Cài đặt luôn hiển thị)
+	const menuItems = allItems.filter(item => item.id === 'settings' || menuConfig[item.id] !== false);
 
 	return (
 		<div className="w-72 lg:w-64 h-full bg-surface border-r border-faint flex flex-col p-6 shadow-2xl lg:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] relative z-20">

@@ -8,8 +8,9 @@ import Wallet from './components/Wallet';
 import Login from './components/Login';
 import Finance from './components/Finance';
 import Settings from './components/Settings';
+import UpgradePro from './components/UpgradePro';
 import { api } from './api';
-import { Search, Bell, User } from 'lucide-react';
+import { Search, Bell, User, Sparkles, Shield, LogOut } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,6 +22,9 @@ function App() {
   const [userEmail, setUserEmail] = useState(sessionStorage.getItem('userEmail'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [menuConfig, setMenuConfig] = useState({
+    dashboard: true, trade: true, portfolio: true, history: true, wallet: true, finance: true
+  });
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -33,7 +37,20 @@ function App() {
     const data = await api.call('getProfile', { email: email || userEmail });
     setProfile(data);
     fetchNotifications(email || userEmail);
+    fetchSettings(email || userEmail);
     setLoading(false);
+  };
+
+  const fetchSettings = async (email) => {
+    const res = await api.call('getUserSettings', { email: email || userEmail });
+    if (res && res.menu && Object.keys(res.menu).length > 0) {
+      setMenuConfig(prev => ({ ...prev, ...res.menu }));
+    }
+  };
+
+  const updateSettings = async (newMenuConfig) => {
+    setMenuConfig(newMenuConfig);
+    await api.call('updateUserSettings', { email: userEmail, settings: { menu: newMenuConfig } });
   };
 
   const fetchNotifications = async (email) => {
@@ -97,8 +114,9 @@ function App() {
       case 'portfolio': return <Portfolio holdings={profile.holdings} refreshProfile={fetchProfile} />;
       case 'history': return <History profile={profile} refreshProfile={fetchProfile} />;
       case 'wallet': return <Wallet profile={profile} refreshProfile={fetchProfile} />;
-      case 'finance': return <Finance userEmail={profile.email} />;
-      case 'settings': return <Settings theme={theme} setTheme={setTheme} />;
+      case 'finance': return <Finance userEmail={profile.email} isPro={profile.isPro} subStart={profile.subStart} subEnd={profile.subEnd} setActiveTab={setActiveTab} />;
+      case 'settings': return <Settings theme={theme} setTheme={setTheme} menuConfig={menuConfig} updateSettings={updateSettings} />;
+      case 'upgrade': return <UpgradePro userEmail={profile.email} />;
       default: return <Dashboard profile={profile} />;
     }
   };
@@ -117,6 +135,7 @@ function App() {
           setActiveTab={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
           onLogout={handleLogout}
           setSidebarOpen={setSidebarOpen}
+          menuConfig={menuConfig}
         />
       </div>
 
@@ -197,7 +216,7 @@ function App() {
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-xs font-black leading-none mb-0.5 uppercase tracking-tighter">{profile.email.split('@')[0]}</p>
-                  <p className="text-[9px] text-textSecondary font-bold uppercase tracking-[0.15em] opacity-50">Tài khoản Live</p>
+                  <p className="text-[9px] text-textSecondary font-bold uppercase tracking-[0.15em] opacity-50">{profile.isPro ? 'Tài khoản Pro' : 'Tài khoản Basic'}</p>
                 </div>
               </div>
 
@@ -210,7 +229,14 @@ function App() {
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <p className="text-sm font-black text-textPrimary truncate tracking-tight">{profile.email}</p>
-                        <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Thành viên Pro</p>
+                        <p className={`text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${profile.isPro ? 'text-primary' : 'text-textSecondary'}`}>
+                          {profile.isPro ? 'Thành viên Pro' : 'Thành viên Basic'}
+                        </p>
+                        {profile.isPro && profile.subEnd && (
+                          <p className="text-[7px] font-bold text-textSecondary uppercase tracking-widest mt-1">
+                            Hết hạn: {new Date(profile.subEnd).toLocaleDateString('vi-VN')}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -228,14 +254,17 @@ function App() {
 
                   <div className="p-2 space-y-1">
                     <button
-                      onClick={() => { setActiveTab('wallet'); setShowProfile(false); }}
+                      onClick={() => { setActiveTab('upgrade'); setShowProfile(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-primary bg-primary/5 hover:bg-primary/10 transition-all text-xs font-black uppercase tracking-widest border border-primary/10"
+                    >
+                      <div className="p-1.5 bg-primary/10 rounded-lg"><Sparkles size={14} className="text-primary" /></div>
+                      Nâng cấp lấy phiếu chi
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('settings'); setShowProfile(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-textSecondary hover:bg-muted hover:text-textPrimary transition-all text-xs font-black uppercase tracking-widest"
                     >
-                      <div className="p-1.5 bg-muted rounded-lg"><User size={14} /></div>
-                      Hồ sơ cá nhân
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-textSecondary hover:bg-muted hover:text-textPrimary transition-all text-xs font-black uppercase tracking-widest">
-                      <div className="p-1.5 bg-muted rounded-lg"><Search size={14} /></div>
+                      <div className="p-1.5 bg-muted rounded-lg"><Shield size={14} /></div>
                       Bảo mật tài khoản
                     </button>
                     <div className="h-px bg-muted mx-4 my-2"></div>
