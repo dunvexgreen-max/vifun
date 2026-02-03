@@ -88,15 +88,15 @@ const History = ({ profile, refreshProfile }) => {
 						<div className="grid grid-cols-2 gap-4 pl-2 pt-2 border-t border-faint">
 							<div className="space-y-0.5">
 								<p className="text-[10px] font-bold text-textSecondary uppercase tracking-widest opacity-50">Số lượng</p>
-								<p className="text-sm font-black text-textPrimary/90">{item.quantity.toLocaleString()}</p>
+								<p className="text-sm font-black text-textPrimary/90">{(item.quantity || 0).toLocaleString()}</p>
 							</div>
 							<div className="space-y-0.5 text-right">
 								<p className="text-[10px] font-bold text-textSecondary uppercase tracking-widest opacity-50">Tổng tiền</p>
-								<p className="text-sm font-black text-textPrimary">{formatVND(item.total)}</p>
+								<p className="text-sm font-black text-textPrimary">{formatVND(item.total || 0)}</p>
 							</div>
 							<div className="space-y-0.5">
 								<p className="text-[10px] font-bold text-textSecondary uppercase tracking-widest opacity-50">Giá khớp</p>
-								<p className="text-xs font-black text-primary">{item.symbol === 'DEPOSIT' ? '--' : formatVND(item.price)}</p>
+								<p className="text-xs font-black text-primary">{item.symbol === 'DEPOSIT' ? '--' : formatVND(item.price || 0)}</p>
 							</div>
 						</div>
 					</div>
@@ -136,10 +136,10 @@ const History = ({ profile, refreshProfile }) => {
 												{item.side === 'BUY' ? 'MUA' : item.side === 'SELL' ? 'BÁN' : 'NẠP'} {item.type}
 											</span>
 										</td>
-										<td className="px-6 py-6 text-right font-black text-textPrimary/90">{item.quantity.toLocaleString()}</td>
-										<td className="px-6 py-6 text-right font-black text-textPrimary">{formatVND(item.total)}</td>
+										<td className="px-6 py-6 text-right font-black text-textPrimary/90">{(item.quantity || 0).toLocaleString()}</td>
+										<td className="px-6 py-6 text-right font-black text-textPrimary">{formatVND(item.total || 0)}</td>
 										<td className="px-6 py-6 text-right font-black text-primary">
-											{item.symbol === 'DEPOSIT' ? '--' : formatVND(item.price)}
+											{item.symbol === 'DEPOSIT' ? '--' : formatVND(item.price || 0)}
 										</td>
 										<td className="px-8 py-6 text-center">
 											<button

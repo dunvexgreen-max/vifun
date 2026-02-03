@@ -21,7 +21,8 @@ import {
 	Lock,
 	Mail,
 	CheckSquare,
-	Sparkles
+	Sparkles,
+	Eraser
 } from 'lucide-react';
 import {
 	Chart as ChartJS,
@@ -53,7 +54,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	const [editingId, setEditingId] = useState(null);
 	const initialFormState = {
 		date: new Date().toISOString().split('T')[0],
-		projected: '',
 		actual: '',
 		type: 'INCOME',
 		category: 'Lương',
@@ -84,7 +84,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 
 	const [notification, setNotification] = useState(null);
 	const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
-	const [isPremiumSubscribed, setIsPremiumSubscribed] = useState(isPro);
+	const [isPremiumSubscribed, setIsPremiumSubscribed] = useState(false);
+	const [isCleaning, setIsCleaning] = useState(false);
 
 	const fetchFinanceData = async () => {
 		setLoading(true);
@@ -94,12 +95,16 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				api.call('checkGmailConnection', { email: userEmail }, 'finance')
 			]);
 
-			if (transData && !transData.error) {
-				setTransactions(transData);
+			if (transData && Array.isArray(transData.transactions)) {
+				setTransactions(transData.transactions);
+			} else {
+				setTransactions([]);
 			}
 
-			if (isPro || (connStatus && connStatus.connected)) {
+			if (connStatus && connStatus.connected) {
 				setIsPremiumSubscribed(true);
+			} else {
+				setIsPremiumSubscribed(false);
 			}
 		} catch (e) {
 			console.error("Error fetching finance data", e);
@@ -117,22 +122,46 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			return;
 		}
 
+		// Nếu chưa được cấp quyền (Subscribed = đã kết nối OAuth), bắt đầu luồng xác thực
+		if (!isPremiumSubscribed) {
+			setSyncing(false); // Reset trạng thái nút ngay lập tức
+			handleActivatePremium();
+			return;
+		}
+
 		if (syncing) return;
 		setSyncing(true);
 		try {
 			const res = await api.call('syncGmailReceipts', { email: userEmail }, 'finance');
 			if (res && res.success) {
+				await fetchFinanceData(); // Luôn lấy lại dữ liệu mới nhất
 				if (res.syncCount > 0) {
 					setNotification({ type: 'success', message: `Đồng bộ thành công ${res.syncCount} giao dịch!` });
-					await fetchFinanceData();
 				} else {
-					setNotification({ type: 'info', message: 'Không tìm thấy giao dịch mới.' });
+					setNotification({ type: 'info', message: 'Dữ liệu đã được cập nhật mới nhất.' });
 				}
 			}
 		} catch (error) {
 			setNotification({ type: 'error', message: 'Lỗi kết nối máy chủ.' });
 		} finally {
 			setSyncing(false);
+			setTimeout(() => setNotification(null), 3000);
+		}
+	};
+
+	const handleCleanup = async () => {
+		if (!window.confirm('Hệ thống sẽ dọn dẹp các email rác (điểm thưởng, quảng cáo...) đã lỡ chui vào sheet. Bạn có chắc chắn?')) return;
+		setIsCleaning(true);
+		try {
+			const res = await api.call('cleanupFinanceDatabase', { email: userEmail }, 'finance');
+			if (res && res.success) {
+				await fetchFinanceData();
+				setNotification({ type: 'success', message: res.message || 'Đã dọn dẹp sạch sẽ dữ liệu rác!' });
+			}
+		} catch (error) {
+			setNotification({ type: 'error', message: 'Lỗi khi thực hiện dọn dẹp.' });
+		} finally {
+			setIsCleaning(false);
 			setTimeout(() => setNotification(null), 3000);
 		}
 	};
@@ -149,9 +178,9 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				const checkWindow = setInterval(() => {
 					if (authWindow.closed) {
 						clearInterval(checkWindow);
-						setIsPremiumSubscribed(true); // Giả định thành công sau khi đóng
 						setIsPremiumModalOpen(false);
-						setNotification({ type: 'success', message: 'Hệ thống đang kiểm tra kết nối Gmail của bạn...' });
+						setNotification({ type: 'success', message: 'Hệ thống đang kết nối và đồng bộ dữ liệu của bạn...' });
+						setTimeout(() => setNotification(null), 5000);
 						setLoading(false);
 						fetchFinanceData();
 					}
@@ -159,6 +188,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			} else {
 				setNotification({ type: 'error', message: res.error || 'Không thể khởi tạo xác thực.' });
 				setLoading(false);
+				setTimeout(() => setNotification(null), 3000);
 			}
 		} catch (error) {
 			setNotification({ type: 'error', message: 'Lỗi khởi tạo luồng xác thực.' });
@@ -217,7 +247,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 		setEditingId(t.id);
 		setFormData({
 			date: t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-			projected: t.projected,
 			actual: t.actual,
 			type: t.type,
 			category: t.category,
@@ -261,8 +290,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	// Statistics Calculations
 	const totalInflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
 	const totalOutflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
-	const totalInflowProjected = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.projected) || 0), 0);
-	const totalOutflowProjected = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.projected) || 0), 0);
 	const netLiquidity = totalInflowActual - totalOutflowActual;
 
 	// Hiệu suất tiết kiệm: Tỷ lệ phần trăm số tiền còn lại sau khi chi tiêu so với tổng thu nhập
@@ -458,10 +485,10 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					>
 						Tất cả
 					</button>
-					{isPro && (
+					<div className="flex items-center gap-2 lg:gap-3 flex-1 xl:flex-none">
 						<button
 							onClick={handleSync}
-							disabled={syncing}
+							disabled={syncing || isCleaning}
 							className={`flex-1 xl:flex-none glass border border-faint px-4 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2 h-[44px] ${!isPremiumSubscribed ? 'text-amber-500' : ''}`}
 						>
 							{isPremiumSubscribed ? (
@@ -471,7 +498,18 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							)}
 							<span className="inline">{syncing ? '...' : (isPremiumSubscribed ? 'Cập nhật' : 'Deep Sync')}</span>
 						</button>
-					)}
+
+						{isPremiumSubscribed && (
+							<button
+								onClick={handleCleanup}
+								disabled={syncing || isCleaning}
+								className="flex-none glass border border-faint p-3 rounded-xl lg:rounded-2xl text-textSecondary hover:text-danger hover:border-danger/30 transition-all flex items-center justify-center h-[44px] w-[44px]"
+								title="Dọn dẹp dữ liệu rác"
+							>
+								<Eraser size={16} className={isCleaning ? 'animate-bounce text-danger' : ''} />
+							</button>
+						)}
+					</div>
 					<button
 						onClick={() => {
 							setEditingId(null);
@@ -544,7 +582,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
 							<div className="flex flex-col gap-0.5">
 								<span className="text-sm md:text-lg lg:text-3xl font-black text-success tracking-tighter truncate">{formatVND(totalInflowActual)}</span>
-								<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalInflowProjected)}</p>
 							</div>
 						</div>
 						{isPro && subEnd && (
@@ -559,7 +596,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Chi Tiêu</p>
 						<div className="flex flex-col gap-0.5">
 							<span className="text-sm md:text-lg lg:text-3xl font-black text-danger tracking-tighter truncate">{formatVND(totalOutflowActual)}</span>
-							<p className="text-[8px] lg:text-[10px] font-bold text-textSecondary uppercase tracking-wider opacity-60 truncate">KH: {formatVND(totalOutflowProjected)}</p>
 						</div>
 					</div>
 				</div>
@@ -596,11 +632,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<h3 className="font-black text-xs lg:text-sm uppercase tracking-widest">Thu Nhập</h3>
 						</div>
 						<div className="flex items-center gap-2">
-							<div className="px-2 py-1 bg-muted rounded-lg border border-faint">
-								<span className="text-[8px] font-black text-textSecondary uppercase tracking-wider">Kế hoạch: {formatVND(totalInflowProjected)}</span>
-							</div>
 							<div className="px-2 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/10">
-								<span className="text-[8px] font-black text-success uppercase tracking-wider">Thực tế: {formatVND(totalInflowActual)}</span>
+								<span className="text-[8px] font-black text-success uppercase tracking-wider">Tổng thu: {formatVND(totalInflowActual)}</span>
 							</div>
 						</div>
 					</div>
@@ -610,17 +643,14 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<thead>
 								<tr className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest border-b border-faint">
 									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
-									<th className="px-2 py-4">Kế hoạch</th>
-									<th className="px-2 py-4">Thực tế</th>
-									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Tình trạng</th>
-									<th className="px-3 py-4 text-right">Sửa/Xóa</th>
+									<th className="px-2 py-4">Số tiền</th>
+									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Phân loại</th>
+									<th className="px-3 py-4 text-right">Thao tác</th>
 								</tr>
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-faint">
 								{currentIncomes.map((t, i) => {
 									const actual = parseFloat(t.actual) || 0;
-									const projected = parseFloat(t.projected) || 0;
-									const variance = actual - projected;
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
@@ -641,16 +671,9 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-textSecondary font-medium whitespace-nowrap">{formatVND(projected)}</td>
-											<td className="px-2 py-4 text-textPrimary font-bold whitespace-nowrap">{formatVND(actual)}</td>
+											<td className="px-2 py-4 text-textPrimary font-bold">{formatVND(actual)}</td>
 											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
-												{variance === 0 ? (
-													<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">Đã khớp</span>
-												) : (
-													<span className={`text-[9px] font-black uppercase ${variance > 0 ? 'text-success' : 'text-danger'}`}>
-														{variance > 0 ? 'Vượt thu' : 'Hụt thu'}
-													</span>
-												)}
+												<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">{t.category || 'Thu nhập'}</span>
 											</td>
 											<td className="px-2 py-4 text-right">
 												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -700,19 +723,10 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										<button onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }} className="p-2 bg-danger/10 text-danger rounded-lg"><Trash2 size={14} /></button>
 									</div>
 								</div>
-								<div className="grid grid-cols-2 gap-4">
+								<div className="grid grid-cols-1 gap-2">
 									<div>
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Thực thu</p>
+										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
 										<p className="text-sm font-black text-success">{formatVND(t.actual)}</p>
-									</div>
-									<div className="text-right">
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Kế hoạch / Tình trạng</p>
-										<div className="flex flex-col items-end">
-											<p className="text-[10px] font-bold text-textSecondary">{formatVND(t.projected)}</p>
-											<span className={`text-[9px] font-black mt-1 ${parseFloat(t.actual) >= parseFloat(t.projected) ? 'text-success' : 'text-danger'}`}>
-												{parseFloat(t.actual) >= parseFloat(t.projected) ? 'Khớp/Vượt' : 'Hụt thu'}
-											</span>
-										</div>
 									</div>
 								</div>
 							</div>
@@ -738,11 +752,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<h3 className="font-black text-xs lg:text-sm uppercase tracking-widest">Chi Tiêu</h3>
 						</div>
 						<div className="flex items-center gap-2">
-							<div className="px-2 py-1 bg-muted rounded-lg border border-faint">
-								<span className="text-[8px] font-black text-textSecondary uppercase tracking-wider">Kế hoạch: {formatVND(totalOutflowProjected)}</span>
-							</div>
 							<div className="px-2 py-1 bg-red-500/10 rounded-lg border border-red-500/10">
-								<span className="text-[8px] font-black text-danger uppercase tracking-wider">Thực tế: {formatVND(totalOutflowActual)}</span>
+								<span className="text-[8px] font-black text-danger uppercase tracking-wider">Tổng chi: {formatVND(totalOutflowActual)}</span>
 							</div>
 						</div>
 					</div>
@@ -752,17 +763,14 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<thead>
 								<tr className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest border-b border-faint">
 									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
-									<th className="px-2 py-4">Kế hoạch</th>
-									<th className="px-2 py-4">Thực tế</th>
-									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Tình trạng</th>
-									<th className="px-3 py-4 text-right">Sửa/Xóa</th>
+									<th className="px-2 py-4">Số tiền</th>
+									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Phân loại</th>
+									<th className="px-3 py-4 text-right">Thao tác</th>
 								</tr>
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-faint">
 								{currentExpenses.map((t, i) => {
 									const actual = parseFloat(t.actual) || 0;
-									const projected = parseFloat(t.projected) || 0;
-									const variance = projected - actual;
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
@@ -783,16 +791,9 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-textSecondary font-medium whitespace-nowrap">{formatVND(projected)}</td>
-											<td className="px-2 py-4 text-textPrimary font-bold whitespace-nowrap">{formatVND(actual)}</td>
+											<td className="px-2 py-4 text-textPrimary font-bold">{formatVND(actual)}</td>
 											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
-												{variance === 0 ? (
-													<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">Đã khớp</span>
-												) : (
-													<span className={`text-[9px] font-black uppercase ${variance < 0 ? 'text-danger' : 'text-success'}`}>
-														{variance < 0 ? 'Vượt chi' : 'Tiết kiệm'}
-													</span>
-												)}
+												<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">{t.category || 'Chi tiêu'}</span>
 											</td>
 											<td className="px-2 py-4 text-right">
 												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -842,19 +843,10 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										<button onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }} className="p-2 bg-danger/10 text-danger rounded-lg"><Trash2 size={14} /></button>
 									</div>
 								</div>
-								<div className="grid grid-cols-2 gap-4">
+								<div className="grid grid-cols-1 gap-2">
 									<div>
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Thực chi</p>
+										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
 										<p className="text-sm font-black text-danger">{formatVND(t.actual)}</p>
-									</div>
-									<div className="text-right">
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Kế hoạch / Tình trạng</p>
-										<div className="flex flex-col items-end">
-											<p className="text-[10px] font-bold text-textSecondary">{formatVND(t.projected)}</p>
-											<span className={`text-[9px] font-black mt-1 ${parseFloat(t.actual) <= parseFloat(t.projected) ? 'text-success' : 'text-danger'}`}>
-												{parseFloat(t.actual) <= parseFloat(t.projected) ? 'Tiết kiệm' : 'Vượt chi'}
-											</span>
-										</div>
 									</div>
 								</div>
 							</div>
@@ -973,15 +965,6 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							data={{
 								labels: ['Thu Nhập', 'Chi Tiêu'],
 								datasets: [
-									{
-										label: 'Kế Hoạch',
-										data: [totalInflowProjected, totalOutflowProjected],
-										backgroundColor: ['rgba(16, 185, 129, 0.2)', 'rgba(239, 68, 68, 0.2)'],
-										borderColor: ['#10b981', '#ef4444'],
-										borderWidth: 1,
-										borderRadius: 8,
-										maxBarThickness: 40,
-									},
 									{
 										label: 'Thực Tế',
 										data: [totalInflowActual, totalOutflowActual],
@@ -1125,28 +1108,16 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 											/>
 										</div>
 
-										{/* Comparison Fields */}
-										<div className="grid grid-cols-2 gap-4 md:gap-6">
-											<div>
-												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền Dự kiến</label>
-												<input
-													type="number"
-													value={formData.projected}
-													onChange={e => setFormData({ ...formData, projected: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
-													placeholder="0"
-												/>
-											</div>
-											<div>
-												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền Thực tế</label>
-												<input
-													type="number"
-													value={formData.actual}
-													onChange={e => setFormData({ ...formData, actual: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
-													placeholder="0"
-												/>
-											</div>
+										{/* Transaction Amount */}
+										<div>
+											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền giao dịch</label>
+											<input
+												type="number"
+												value={formData.actual}
+												onChange={e => setFormData({ ...formData, actual: e.target.value })}
+												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+												placeholder="0"
+											/>
 										</div>
 
 										<div className="grid grid-cols-2 gap-4 md:gap-6">
@@ -1358,32 +1329,13 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										</div>
 									</div>
 
-									<div className="grid grid-cols-2 gap-3">
+									<div className="grid grid-cols-1">
 										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
-											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Kế hoạch</p>
-											<p className="text-lg font-black text-primary">{formatVND(selectedTx.projected || 0)}</p>
-										</div>
-										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
-											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Thực tế</p>
+											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Số tiền giao dịch</p>
 											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || 0)}</p>
 										</div>
 									</div>
 
-									<div className="p-4 bg-muted/30 rounded-2xl border border-faint flex justify-between items-center">
-										<p className="text-[9px] font-black text-textSecondary uppercase">Chênh lệch</p>
-										<p className={`text-xs font-black uppercase ${selectedTx.type === 'INCOME'
-											? (selectedTx.actual - selectedTx.projected >= 0 ? 'text-success' : 'text-danger')
-											: (selectedTx.projected - selectedTx.actual < 0 ? 'text-danger' : 'text-success')
-											}`}>
-											{formatVND(Math.abs(selectedTx.actual - selectedTx.projected))}
-											<span className="ml-2 text-[8px] opacity-70">
-												({selectedTx.type === 'INCOME'
-													? (selectedTx.actual >= selectedTx.projected ? 'Vượt thu' : 'Hụt thu')
-													: (selectedTx.actual > selectedTx.projected ? 'Vượt chi' : 'Tiết kiệm')
-												})
-											</span>
-										</p>
-									</div>
 								</div>
 
 								<button
