@@ -288,8 +288,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	});
 
 	// Statistics Calculations
-	const totalInflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
-	const totalOutflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
+	const totalInflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
+	const totalOutflowActual = filteredTransactions.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
 	const netLiquidity = totalInflowActual - totalOutflowActual;
 
 	// Hiệu suất tiết kiệm: Tỷ lệ phần trăm số tiền còn lại sau khi chi tiêu so với tổng thu nhập
@@ -309,8 +309,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			return d >= start && d <= end;
 		});
 
-		const inc = monthTx.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
-		const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
+		const inc = monthTx.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
+		const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
 		return inc - exp;
 	};
 
@@ -345,8 +345,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				return txDate >= monthStart && txDate <= monthEnd;
 			});
 
-			const inc = monthTx.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
-			const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual) || 0), 0);
+			const inc = monthTx.filter(t => String(t.type).toUpperCase() === 'INCOME').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
+			const exp = monthTx.filter(t => String(t.type).toUpperCase() === 'EXPENSE').reduce((sum, t) => sum + (parseFloat(t.actual || t.amount) || 0), 0);
 
 			months.push({ label: monthLabel, income: inc, expense: exp });
 		}
@@ -650,7 +650,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-faint">
 								{currentIncomes.map((t, i) => {
-									const actual = parseFloat(t.actual) || 0;
+									const actual = parseFloat(t.actual) || parseFloat(t.amount) || 0;
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
@@ -726,7 +726,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 								<div className="grid grid-cols-1 gap-2">
 									<div>
 										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
-										<p className="text-sm font-black text-success">{formatVND(t.actual)}</p>
+										<p className="text-sm font-black text-success">{formatVND(t.actual || t.amount || 0)}</p>
 									</div>
 								</div>
 							</div>
@@ -770,7 +770,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							</thead>
 							<tbody className="text-[11px] lg:text-xs font-bold divide-y divide-faint">
 								{currentExpenses.map((t, i) => {
-									const actual = parseFloat(t.actual) || 0;
+									const actual = parseFloat(t.actual) || parseFloat(t.amount) || 0;
 									const dateObj = new Date(t.date);
 									const isManual = t.status === 'MANUAL';
 									return (
@@ -846,7 +846,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 								<div className="grid grid-cols-1 gap-2">
 									<div>
 										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
-										<p className="text-sm font-black text-danger">{formatVND(t.actual)}</p>
+										<p className="text-sm font-black text-danger">{formatVND(t.actual || t.amount || 0)}</p>
 									</div>
 								</div>
 							</div>
@@ -1332,7 +1332,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 									<div className="grid grid-cols-1">
 										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
 											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Số tiền giao dịch</p>
-											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || 0)}</p>
+											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || selectedTx.amount || 0)}</p>
 										</div>
 									</div>
 
