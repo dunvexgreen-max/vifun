@@ -140,6 +140,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				} else {
 					setNotification({ type: 'info', message: 'Dữ liệu đã được cập nhật mới nhất.' });
 				}
+			} else if (res && res.error) {
+				setNotification({ type: 'error', message: res.error });
 			}
 		} catch (error) {
 			setNotification({ type: 'error', message: 'Lỗi kết nối máy chủ.' });
