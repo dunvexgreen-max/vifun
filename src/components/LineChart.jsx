@@ -24,6 +24,8 @@ ChartJS.register(
 );
 
 const LineChart = ({ data }) => {
+	const isDark = document.documentElement.classList.contains('dark');
+
 	const options = {
 		responsive: true,
 		maintainAspectRatio: false,
@@ -34,10 +36,10 @@ const LineChart = ({ data }) => {
 			tooltip: {
 				mode: 'index',
 				intersect: false,
-				backgroundColor: '#162235',
-				titleColor: '#94A3B8',
-				bodyColor: '#FFFFFF',
-				borderColor: 'rgba(255, 255, 255, 0.1)',
+				backgroundColor: isDark ? '#1a1a08' : '#ffffff',
+				titleColor: isDark ? '#ffffff' : '#1a1a05',
+				bodyColor: isDark ? '#f4e225' : '#8c864f',
+				borderColor: isDark ? 'rgba(244, 226, 37, 0.2)' : 'rgba(0, 0, 0, 0.05)',
 				borderWidth: 1,
 				padding: 12,
 				cornerRadius: 12,
@@ -61,7 +63,7 @@ const LineChart = ({ data }) => {
 					display: false,
 				},
 				ticks: {
-					color: '#64748b',
+					color: isDark ? '#8c864f' : '#8c864f',
 					font: {
 						size: 10,
 						weight: 'bold'
@@ -73,10 +75,10 @@ const LineChart = ({ data }) => {
 			},
 			y: {
 				grid: {
-					color: 'rgba(255, 255, 255, 0.05)',
+					color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
 				},
 				ticks: {
-					color: '#64748b',
+					color: isDark ? '#8c864f' : '#8c864f',
 					font: {
 						size: 10,
 					},
@@ -97,8 +99,8 @@ const LineChart = ({ data }) => {
 				fill: true,
 				label: 'Giá',
 				data: [0, 0, 0, 0, 0, 0],
-				borderColor: '#3B82F6',
-				backgroundColor: 'rgba(59, 130, 246, 0.1)',
+				borderColor: '#f4e225',
+				backgroundColor: 'rgba(244, 226, 37, 0.05)',
 				tension: 0.4,
 				pointRadius: 4,
 				pointHoverRadius: 6,

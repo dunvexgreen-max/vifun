@@ -60,7 +60,7 @@ const UpgradePro = ({ userEmail }) => {
 			{step === 1 && (
 				<>
 					{/* Hero Section */}
-					<div className="glass p-8 lg:p-12 rounded-[40px] border-faint overflow-hidden relative group">
+					<div className="glass p-8 lg:p-12 rounded-[40px] border-border-light dark:border-border-dark overflow-hidden relative group">
 						<div className="absolute -right-20 -top-20 w-80 h-80 bg-primary/20 rounded-full blur-[100px] group-hover:bg-primary/30 transition-all duration-1000"></div>
 						<div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px] group-hover:bg-purple-500/20 transition-all duration-1000"></div>
 
@@ -77,7 +77,7 @@ const UpgradePro = ({ userEmail }) => {
 									THU CHI NGÂN HÀNG
 								</h1>
 
-								<p className="text-textSecondary font-bold text-sm lg:text-base leading-relaxed max-w-lg">
+								<p className="text-text-muted font-bold text-sm lg:text-base leading-relaxed max-w-lg">
 									Giải phóng thời gian của bạn. Không còn phải nhập tay từng giao dịch.
 									Ứng dụng sẽ tự động lấy thông tin từ email biến động số dư và ghi chép vào sổ thu chi của bạn.
 								</p>
@@ -98,9 +98,9 @@ const UpgradePro = ({ userEmail }) => {
 								<div className="absolute inset-0 bg-primary/5 rounded-[32px]"></div>
 								<div className="relative z-10 space-y-6 text-center">
 									<div className="space-y-1">
-										<p className="text-xs font-black text-textSecondary uppercase tracking-widest">Gói Pro 1 Năm</p>
-										<h2 className="text-4xl font-black text-textPrimary tracking-tighter">300.000đ</h2>
-										<p className="text-[10px] text-textSecondary font-bold">Chỉ ~800đ / ngày</p>
+										<p className="text-xs font-black text-text-muted uppercase tracking-widest">Gói Pro 1 Năm</p>
+										<h2 className="text-4xl font-black text-text-main dark:text-white tracking-tighter">300.000đ</h2>
+										<p className="text-[10px] text-text-muted font-bold">Chỉ ~800đ / ngày</p>
 									</div>
 
 									<div className="h-px bg-faint w-full"></div>
@@ -109,7 +109,7 @@ const UpgradePro = ({ userEmail }) => {
 										{['Tự động quét Gmail', 'Không giới hạn giao dịch', 'Xuất báo cáo Excel/PDF', 'Hỗ trợ ưu tiên 24/7'].map((item, idx) => (
 											<li key={idx} className="flex items-center gap-3">
 												<CheckCircle2 size={14} className="text-primary" />
-												<span className="text-[10px] font-bold text-textPrimary/80 uppercase">{item}</span>
+												<span className="text-[10px] font-bold text-text-main dark:text-white/80 uppercase">{item}</span>
 											</li>
 										))}
 									</ul>
@@ -128,12 +128,12 @@ const UpgradePro = ({ userEmail }) => {
 					{/* Benefits Grid */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						{benefits.map((b, i) => (
-							<div key={i} className="glass p-8 rounded-[32px] border-faint hover:border-primary/30 transition-all group">
+							<div key={i} className="glass p-8 rounded-[32px] border-border-light dark:border-border-dark hover:border-primary/30 transition-all group">
 								<div className={`p-4 ${b.bg} ${b.color} rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform`}>
 									<b.icon size={24} />
 								</div>
 								<h3 className="text-lg font-black uppercase tracking-tight mb-3 group-hover:text-primary transition-colors">{b.title}</h3>
-								<p className="text-textSecondary font-bold text-xs leading-relaxed">{b.desc}</p>
+								<p className="text-text-muted font-bold text-xs leading-relaxed">{b.desc}</p>
 							</div>
 						))}
 					</div>
@@ -144,36 +144,36 @@ const UpgradePro = ({ userEmail }) => {
 				<div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5">
 					<div className="text-center space-y-4">
 						<h2 className="text-3xl font-black uppercase tracking-tight">Chọn phương thức thanh toán</h2>
-						<p className="text-textSecondary font-bold text-sm uppercase tracking-widest opacity-60">Gói Pro - 300.000đ / năm</p>
+						<p className="text-text-muted font-bold text-sm uppercase tracking-widest opacity-60">Gói Pro - 300.000đ / năm</p>
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 						<button
 							onClick={() => { setPaymentMethod('bank'); setStep(3); }}
-							className="glass p-8 rounded-[32px] border-faint hover:border-primary/50 transition-all group text-center space-y-4 group"
+							className="glass p-8 rounded-[32px] border-border-light dark:border-border-dark hover:border-primary/50 transition-all group text-center space-y-4 group"
 						>
-							<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto text-textSecondary group-hover:text-primary group-hover:bg-primary/10 transition-all">
+							<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto text-text-muted group-hover:text-primary group-hover:bg-primary/10 transition-all">
 								<Landmark size={32} />
 							</div>
 							<h3 className="font-black uppercase tracking-widest text-sm">Chuyển khoản NH</h3>
-							<p className="text-[10px] text-textSecondary font-bold uppercase tracking-wider">Vietcombank / Techcombank</p>
+							<p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Vietcombank / Techcombank</p>
 						</button>
 
 						<button
 							onClick={() => { setPaymentMethod('momo'); setStep(3); }}
-							className="glass p-8 rounded-[32px] border-faint hover:border-pink-500/50 transition-all group text-center space-y-4 group"
+							className="glass p-8 rounded-[32px] border-border-light dark:border-border-dark hover:border-pink-500/50 transition-all group text-center space-y-4 group"
 						>
-							<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto text-textSecondary group-hover:text-pink-500 group-hover:bg-pink-500/10 transition-all">
+							<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto text-text-muted group-hover:text-pink-500 group-hover:bg-pink-500/10 transition-all">
 								<Smartphone size={32} />
 							</div>
 							<h3 className="font-black uppercase tracking-widest text-sm">Ví Momo</h3>
-							<p className="text-[10px] text-textSecondary font-bold uppercase tracking-wider">Nhanh chóng & Tiện lợi</p>
+							<p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Nhanh chóng & Tiện lợi</p>
 						</button>
 					</div>
 
 					<button
 						onClick={() => setStep(1)}
-						className="w-full py-4 text-textSecondary font-black text-[10px] uppercase tracking-widest hover:text-textPrimary transition-all"
+						className="w-full py-4 text-text-muted font-black text-[10px] uppercase tracking-widest hover:text-text-main dark:text-white transition-all"
 					>
 						Quay lại
 					</button>
@@ -184,44 +184,44 @@ const UpgradePro = ({ userEmail }) => {
 				<div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5">
 					<div className="text-center space-y-4">
 						<h2 className="text-3xl font-black uppercase tracking-tight">Thực hiện thanh toán</h2>
-						<p className="text-textSecondary font-bold text-sm">Vui lòng chuyển khoản đúng nội dung để hệ thống tự động kích hoạt</p>
+						<p className="text-text-muted font-bold text-sm">Vui lòng chuyển khoản đúng nội dung để hệ thống tự động kích hoạt</p>
 					</div>
 
-					<div className="glass p-8 rounded-[40px] border-faint space-y-8 relative overflow-hidden">
+					<div className="glass p-8 rounded-[40px] border-border-light dark:border-border-dark space-y-8 relative overflow-hidden">
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
 							<div className="space-y-6">
-								<div className="p-4 bg-muted rounded-2xl border border-faint space-y-1">
-									<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest">Số tiền cần thanh toán</p>
+								<div className="p-4 bg-muted rounded-2xl border border-border-light dark:border-border-dark space-y-1">
+									<p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Số tiền cần thanh toán</p>
 									<p className="text-2xl font-black text-primary">300.000đ</p>
 								</div>
 
 								{paymentMethod === 'bank' ? (
 									<div className="space-y-4">
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Chủ tài khoản:</span>
-											<span className="font-black text-textPrimary uppercase">{import.meta.env.VITE_BANK_ACCOUNT_NAME}</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Chủ tài khoản:</span>
+											<span className="font-black text-text-main dark:text-white uppercase">{import.meta.env.VITE_BANK_ACCOUNT_NAME}</span>
 										</div>
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Số tài khoản:</span>
-											<span className="font-black text-textPrimary tracking-widest">{import.meta.env.VITE_BANK_ACCOUNT_NUMBER}</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Số tài khoản:</span>
+											<span className="font-black text-text-main dark:text-white tracking-widest">{import.meta.env.VITE_BANK_ACCOUNT_NUMBER}</span>
 										</div>
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Ngân hàng:</span>
-											<span className="font-black text-textPrimary uppercase">{import.meta.env.VITE_BANK_NAME}</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Ngân hàng:</span>
+											<span className="font-black text-text-main dark:text-white uppercase">{import.meta.env.VITE_BANK_NAME}</span>
 										</div>
 									</div>
 								) : (
 									<div className="space-y-4">
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Chủ ví:</span>
-											<span className="font-black text-textPrimary uppercase">{import.meta.env.VITE_BANK_ACCOUNT_NAME}</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Chủ ví:</span>
+											<span className="font-black text-text-main dark:text-white uppercase">{import.meta.env.VITE_BANK_ACCOUNT_NAME}</span>
 										</div>
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Số điện thoại ví:</span>
-											<span className="font-black text-textPrimary tracking-widest">{import.meta.env.VITE_MOMO_PHONE}</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Số điện thoại ví:</span>
+											<span className="font-black text-text-main dark:text-white tracking-widest">{import.meta.env.VITE_MOMO_PHONE}</span>
 										</div>
 										<div className="flex justify-between items-center text-xs">
-											<span className="font-bold text-textSecondary uppercase tracking-widest">Ví điện tử:</span>
+											<span className="font-bold text-text-muted uppercase tracking-widest">Ví điện tử:</span>
 											<span className="font-black text-pink-500 uppercase">Momo</span>
 										</div>
 									</div>
@@ -242,7 +242,7 @@ const UpgradePro = ({ userEmail }) => {
 										<span className="text-[8px] font-black text-amber-500 bg-amber-500/20 px-2 py-0.5 rounded opacity-0 group-hover/copy:opacity-100 transition-all uppercase">Sao chép</span>
 									</div>
 								</div>
-								<p className="text-[9px] text-textSecondary font-bold italic">* Vui lòng ghi đúng nội dung để hệ thống tự động quy đổi cấp độ tài khoản.</p>
+								<p className="text-[9px] text-text-muted font-bold italic">* Vui lòng ghi đúng nội dung để hệ thống tự động quy đổi cấp độ tài khoản.</p>
 							</div>
 
 							<div className="relative aspect-square bg-white rounded-3xl p-4 flex items-center justify-center shadow-inner">
@@ -269,12 +269,12 @@ const UpgradePro = ({ userEmail }) => {
 					</div>
 
 					<div className="space-y-6">
-						<div className="text-center p-6 bg-muted rounded-3xl border border-faint">
+						<div className="text-center p-6 bg-muted rounded-3xl border border-border-light dark:border-border-dark">
 							<ShieldCheck size={40} className="mx-auto text-primary mb-3" />
-							<p className="text-xs font-bold text-textPrimary mb-1">
+							<p className="text-xs font-bold text-text-main dark:text-white mb-1">
 								Hệ thống sẽ tự động kiểm tra giao dịch dựa trên nội dung chuyển khoản.
 							</p>
-							<p className="text-[10px] text-textSecondary">
+							<p className="text-[10px] text-text-muted">
 								Sau khi chuyển khoản xong, hãy nhấn nút xác nhận bên dưới.
 							</p>
 						</div>
@@ -282,7 +282,7 @@ const UpgradePro = ({ userEmail }) => {
 						<button
 							onClick={handleSubmit}
 							disabled={isSubmitting}
-							className={`w-full py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isSubmitting ? 'bg-muted text-textSecondary opacity-50 cursor-not-allowed' : 'bg-primary text-white hover:bg-primaryHover shadow-primary/30 active:scale-[0.98]'}`}
+							className={`w-full py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all flex items-center justify-center gap-3 ${isSubmitting ? 'bg-muted text-text-muted opacity-50 cursor-not-allowed' : 'bg-primary text-white hover:bg-primaryHover shadow-primary/30 active:scale-[0.98]'}`}
 						>
 							{isSubmitting ? (
 								<>
@@ -300,7 +300,7 @@ const UpgradePro = ({ userEmail }) => {
 						<button
 							onClick={() => setStep(2)}
 							disabled={isSubmitting}
-							className="w-full py-4 text-textSecondary font-black text-[10px] uppercase tracking-widest hover:text-textPrimary transition-all"
+							className="w-full py-4 text-text-muted font-black text-[10px] uppercase tracking-widest hover:text-text-main dark:text-white transition-all"
 						>
 							Hủy và quay lại
 						</button>
@@ -319,7 +319,7 @@ const UpgradePro = ({ userEmail }) => {
 
 					<div className="space-y-4">
 						<h2 className="text-4xl font-black uppercase tracking-tight">Gửi yêu cầu thành công!</h2>
-						<p className="text-textSecondary font-bold leading-relaxed">
+						<p className="text-text-muted font-bold leading-relaxed">
 							Hệ thống đã nhận được thông tin thanh toán của bạn.<br />
 							Admin sẽ kiểm tra và kích hoạt gói Pro trong vòng **24h**.<br />
 							Thông báo sẽ được gửi tới Email của bạn ngay khi hoàn tất.
@@ -329,7 +329,7 @@ const UpgradePro = ({ userEmail }) => {
 					<div className="pt-8">
 						<button
 							onClick={() => window.location.href = '/'}
-							className="px-10 py-4 glass border border-faint rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted transition-all"
+							className="px-10 py-4 glass border border-border-light dark:border-border-dark rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted transition-all"
 						>
 							Quay lại Dashboard
 						</button>
@@ -339,14 +339,14 @@ const UpgradePro = ({ userEmail }) => {
 
 			{/* Integration Guide (Only on first step) */}
 			{step === 1 && (
-				<div className="glass p-8 rounded-[40px] border-faint space-y-10 relative overflow-hidden">
+				<div className="glass p-8 rounded-[40px] border-border-light dark:border-border-dark space-y-10 relative overflow-hidden">
 					<div className="absolute top-0 right-0 p-4 opacity-5">
 						<Mail size={200} />
 					</div>
 
 					<div>
 						<h3 className="text-xl font-black uppercase tracking-tight">Quy trình tích hợp</h3>
-						<p className="text-textSecondary font-bold text-sm">Đơn giản - Bảo mật - Hiệu quả</p>
+						<p className="text-text-muted font-bold text-sm">Đơn giản - Bảo mật - Hiệu quả</p>
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
@@ -358,8 +358,8 @@ const UpgradePro = ({ userEmail }) => {
 						].map((s, i) => (
 							<div key={i} className="space-y-4">
 								<span className="text-4xl font-black text-primary/10 tracking-tighter">{s.step}</span>
-								<h4 className="text-xs font-black uppercase tracking-widest text-textPrimary">{s.title}</h4>
-								<p className="text-[10px] text-textSecondary font-bold leading-relaxed">{s.desc}</p>
+								<h4 className="text-xs font-black uppercase tracking-widest text-text-main dark:text-white">{s.title}</h4>
+								<p className="text-[10px] text-text-muted font-bold leading-relaxed">{s.desc}</p>
 							</div>
 						))}
 					</div>

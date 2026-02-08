@@ -122,32 +122,47 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			return;
 		}
 
-		// Nếu chưa được cấp quyền (Subscribed = đã kết nối OAuth), bắt đầu luồng xác thực
-		if (!isPremiumSubscribed) {
-			setSyncing(false); // Reset trạng thái nút ngay lập tức
-			handleActivatePremium();
+		const accessToken = sessionStorage.getItem('gmail_access_token');
+		if (!accessToken) {
+			setNotification({ type: 'error', message: 'Phiên làm việc Google hết hạn. Vui lòng đăng nhập lại.' });
 			return;
 		}
 
 		if (syncing) return;
 		setSyncing(true);
 		try {
-			const res = await api.call('syncGmailReceipts', { email: userEmail }, 'finance');
-			if (res && res.success) {
-				await fetchFinanceData(); // Luôn lấy lại dữ liệu mới nhất
-				if (res.syncCount > 0) {
-					setNotification({ type: 'success', message: `Đồng bộ thành công ${res.syncCount} giao dịch!` });
-				} else {
-					setNotification({ type: 'info', message: 'Dữ liệu đã được cập nhật mới nhất.' });
+			const { gmailCrawler } = await import('../services/crawler/gmailCrawler');
+			const { dbService } = await import('../services/db/dbService');
+
+			setNotification({ type: 'info', message: 'Đang quét Gmail của bạn...' });
+
+			const transactions = await gmailCrawler.crawl(accessToken);
+
+			if (transactions.length > 0) {
+				setNotification({ type: 'info', message: `Đang lưu ${transactions.length} giao dịch vào hàng đợi...` });
+
+				// Get existing queue to avoid duplicates
+				const profileStr = sessionStorage.getItem('userProfile');
+				const profile = profileStr ? JSON.parse(profileStr) : null;
+				const uid = profile?.uid || userEmail;
+
+				for (const tx of transactions) {
+					await dbService.pushToQueue(uid, tx);
 				}
-			} else if (res && res.error) {
-				setNotification({ type: 'error', message: res.error });
+
+				setNotification({ type: 'success', message: `Đã lưu ${transactions.length} giao dịch mới. Hệ thống sẽ tự động đồng bộ về Sheet!` });
+			} else {
+				setNotification({ type: 'info', message: 'Không tìm thấy giao dịch mới trong 2 ngày qua.' });
 			}
+
+			// After pushing to Firestore, we might want to trigger the GAS sync
+			// but for now, we follow the "Firestore first" requirement.
+
 		} catch (error) {
-			setNotification({ type: 'error', message: 'Lỗi kết nối máy chủ.' });
+			setNotification({ type: 'error', message: 'Lỗi đồng bộ: ' + error.message });
 		} finally {
 			setSyncing(false);
-			setTimeout(() => setNotification(null), 3000);
+			setTimeout(() => setNotification(null), 5000);
 		}
 	};
 
@@ -386,7 +401,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 		}
 
 		return (
-			<div className="p-4 border-t border-faint flex items-center justify-center gap-2 bg-muted">
+			<div className="p-4 border-t border-border-light dark:border-border-dark flex items-center justify-center gap-2 bg-muted">
 				<button
 					onClick={() => onPageChange(Math.max(1, current - 1))}
 					disabled={current === 1}
@@ -398,12 +413,12 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				<div className="flex items-center gap-1">
 					{pages.map((p, idx) => (
 						p === '...' ? (
-							<span key={idx} className="px-2 text-textSecondary text-[10px] font-black">...</span>
+							<span key={idx} className="px-2 text-text-muted text-[10px] font-black">...</span>
 						) : (
 							<button
 								key={idx}
 								onClick={() => onPageChange(p)}
-								className={`min-w-[32px] h-8 rounded-lg text-[10px] font-black transition-all ${current === p ? 'bg-blue-600 text-textPrimary' : 'text-textSecondary hover:bg-muted'}`}
+								className={`min-w-[32px] h-8 rounded-lg text-[10px] font-black transition-all ${current === p ? 'bg-blue-600 text-text-main dark:text-white' : 'text-text-muted hover:bg-muted'}`}
 							>
 								{p}
 							</button>
@@ -423,7 +438,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 	};
 
 	return (
-		<div className="flex-1 overflow-auto bg-background text-textPrimary p-3 md:p-6 lg:p-10 font-sans selection:bg-blue-500/30 relative">
+		<div className="flex-1 overflow-auto bg-background-light dark:bg-background-dark text-text-main dark:text-white p-3 md:p-6 lg:p-10 font-sans selection:bg-blue-500/30 relative">
 			{/* Toast Notification */}
 			<AnimatePresence>
 				{notification && (
@@ -446,35 +461,35 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			</AnimatePresence>
 
 			{/* Filter & Action Bar - Optimized for all screens */}
-			<div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 mb-6 bg-muted p-4 lg:p-6 rounded-[24px] lg:rounded-[32px] border border-faint shadow-2xl">
+			<div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 mb-6 bg-muted p-4 lg:p-6 rounded-[24px] lg:rounded-[32px] border border-border-light dark:border-border-dark shadow-2xl">
 				<div className="flex flex-wrap items-end gap-3 lg:gap-4 w-full xl:w-auto">
 					<div className="flex flex-col gap-1.5 flex-1 min-w-[140px] sm:flex-none">
-						<label className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest ml-1">Từ</label>
+						<label className="text-[8px] lg:text-[9px] font-black text-text-muted uppercase tracking-widest ml-1">Từ</label>
 						<div className="relative group">
-							<Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary group-hover:text-primary transition-colors" />
+							<Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-primary transition-colors" />
 							<input
 								type="date"
 								value={startDate}
 								onChange={(e) => { setStartDate(e.target.value); setIncomePage(1); setExpensePage(1); }}
-								className="bg-muted border border-faint rounded-xl pl-9 pr-3 py-2 text-[10px] lg:text-[11px] font-bold focus:outline-none focus:border-primary/50 transition-all w-full sm:w-40 h-[38px]"
+								className="bg-muted border border-border-light dark:border-border-dark rounded-xl pl-9 pr-3 py-2 text-[10px] lg:text-[11px] font-bold focus:outline-none focus:border-primary/50 transition-all w-full sm:w-40 h-[38px]"
 							/>
 						</div>
 					</div>
 					<div className="flex flex-col gap-1.5 flex-1 min-w-[140px] sm:flex-none">
-						<label className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest ml-1">Đến</label>
+						<label className="text-[8px] lg:text-[9px] font-black text-text-muted uppercase tracking-widest ml-1">Đến</label>
 						<div className="relative group">
-							<Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary group-hover:text-primary transition-colors" />
+							<Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-primary transition-colors" />
 							<input
 								type="date"
 								value={endDate}
 								onChange={(e) => { setEndDate(e.target.value); setIncomePage(1); setExpensePage(1); }}
-								className="bg-muted border border-faint rounded-xl pl-9 pr-3 py-2 text-[10px] lg:text-[11px] font-bold focus:outline-none focus:border-primary/50 transition-all w-full sm:w-40 h-[38px]"
+								className="bg-muted border border-border-light dark:border-border-dark rounded-xl pl-9 pr-3 py-2 text-[10px] lg:text-[11px] font-bold focus:outline-none focus:border-primary/50 transition-all w-full sm:w-40 h-[38px]"
 							/>
 						</div>
 					</div>
 					<button
 						onClick={() => { setStartDate(''); setEndDate(''); }}
-						className="hidden sm:block bg-muted border border-faint rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all h-[38px] w-auto active:scale-95"
+						className="hidden sm:block bg-muted border border-border-light dark:border-border-dark rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all h-[38px] w-auto active:scale-95"
 					>
 						Tất cả
 					</button>
@@ -483,7 +498,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				<div className="flex items-center gap-2 lg:gap-3 w-full xl:w-auto">
 					<button
 						onClick={() => { setStartDate(''); setEndDate(''); }}
-						className="sm:hidden flex-1 bg-muted border border-faint rounded-xl py-3 text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all h-[44px] active:scale-95"
+						className="sm:hidden flex-1 bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all h-[44px] active:scale-95"
 					>
 						Tất cả
 					</button>
@@ -491,7 +506,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						<button
 							onClick={handleSync}
 							disabled={syncing || isCleaning}
-							className={`flex-1 xl:flex-none glass border border-faint px-4 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2 h-[44px] ${!isPremiumSubscribed ? 'text-amber-500' : ''}`}
+							className={`flex-1 xl:flex-none glass border border-border-light dark:border-border-dark px-4 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all flex items-center justify-center gap-2 h-[44px] ${!isPremiumSubscribed ? 'text-amber-500' : ''}`}
 						>
 							{isPremiumSubscribed ? (
 								<RefreshCw size={14} className={syncing ? 'animate-spin text-primary' : ''} />
@@ -505,7 +520,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							<button
 								onClick={handleCleanup}
 								disabled={syncing || isCleaning}
-								className="flex-none glass border border-faint p-3 rounded-xl lg:rounded-2xl text-textSecondary hover:text-danger hover:border-danger/30 transition-all flex items-center justify-center h-[44px] w-[44px]"
+								className="flex-none glass border border-border-light dark:border-border-dark p-3 rounded-xl lg:rounded-2xl text-text-muted hover:text-danger hover:border-danger/30 transition-all flex items-center justify-center h-[44px] w-[44px]"
 								title="Dọn dẹp dữ liệu rác"
 							>
 								<Eraser size={16} className={isCleaning ? 'animate-bounce text-danger' : ''} />
@@ -537,14 +552,14 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						<div>
 							<h3 className="text-lg font-black uppercase tracking-tight text-emerald-500">Tài khoản đã nâng cấp tính năng</h3>
 							<div className="flex flex-wrap gap-4 mt-2">
-								<p className="text-textSecondary font-bold text-xs flex items-center gap-1.5">
+								<p className="text-text-muted font-bold text-xs flex items-center gap-1.5">
 									<CheckCircle2 size={14} className="text-emerald-500" />
-									Ngày kích hoạt: <span className="text-textPrimary">{new Date(subStart).toLocaleDateString('vi-VN')}</span>
+									Ngày kích hoạt: <span className="text-text-main dark:text-white">{new Date(subStart).toLocaleDateString('vi-VN')}</span>
 								</p>
 								<div className="w-px h-4 bg-faint hidden md:block"></div>
-								<p className="text-textSecondary font-bold text-xs flex items-center gap-1.5">
+								<p className="text-text-muted font-bold text-xs flex items-center gap-1.5">
 									<Clock size={14} className="text-emerald-500" />
-									Ngày kết thúc: <span className="text-textPrimary">{new Date(subEnd).toLocaleDateString('vi-VN')}</span>
+									Ngày kết thúc: <span className="text-text-main dark:text-white">{new Date(subEnd).toLocaleDateString('vi-VN')}</span>
 								</p>
 							</div>
 						</div>
@@ -564,7 +579,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						</div>
 						<div>
 							<h3 className="text-lg font-black uppercase tracking-tight">Tự động hóa Thu Chi ngay hôm nay!</h3>
-							<p className="text-textSecondary font-bold text-xs">Nâng cấp gói Pro (300k/năm) để tự động hóa việc nhập liệu từ email ngân hàng.</p>
+							<p className="text-text-muted font-bold text-xs">Nâng cấp gói Pro (300k/năm) để tự động hóa việc nhập liệu từ email ngân hàng.</p>
 						</div>
 					</div>
 					<button
@@ -578,10 +593,10 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 
 			{/* High-level stats - Grid layout for better responsiveness */}
 			<div className="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-8">
-				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-border-light dark:border-border-dark flex flex-col justify-between shadow-sm min-h-[80px]">
 					<div className="flex justify-between items-start">
 						<div>
-							<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
+							<p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Thu Nhập</p>
 							<div className="flex flex-col gap-0.5">
 								<span className="text-sm md:text-lg lg:text-3xl font-black text-success tracking-tighter truncate">{formatVND(totalInflowActual)}</span>
 							</div>
@@ -593,26 +608,26 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 						)}
 					</div>
 				</div>
-				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-border-light dark:border-border-dark flex flex-col justify-between shadow-sm min-h-[80px]">
 					<div>
-						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Chi Tiêu</p>
+						<p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">Chi Tiêu</p>
 						<div className="flex flex-col gap-0.5">
 							<span className="text-sm md:text-lg lg:text-3xl font-black text-danger tracking-tighter truncate">{formatVND(totalOutflowActual)}</span>
 						</div>
 					</div>
 				</div>
-				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
-					<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">LN Ròng</p>
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-border-light dark:border-border-dark flex flex-col justify-between shadow-sm min-h-[80px]">
+					<p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1 md:mb-2 lg:mb-3">LN Ròng</p>
 					<div className="flex items-baseline gap-2">
 						<span className={`text-sm md:text-lg lg:text-3xl font-black tracking-tighter truncate ${netLiquidity >= 0 ? 'text-primary' : 'text-danger'}`}>{formatVND(netLiquidity)}</span>
 					</div>
 				</div>
-				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-faint flex flex-col justify-between shadow-sm min-h-[80px]">
+				<div className="bg-muted p-3 md:p-4 lg:p-6 rounded-[20px] lg:rounded-[24px] border border-border-light dark:border-border-dark flex flex-col justify-between shadow-sm min-h-[80px]">
 					<div className="flex justify-between items-center mb-1 md:mb-2 lg:mb-3">
-						<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest">Burn Rate</p>
+						<p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Burn Rate</p>
 						<span className={`text-[9px] md:text-[10px] lg:text-[11px] font-black ${burnRate >= 100 ? 'text-danger' : 'text-success'}`}>{burnRate.toFixed(0)}%</span>
 					</div>
-					<div className="h-1.5 lg:h-2 w-full bg-background rounded-full overflow-hidden border border-faint">
+					<div className="h-1.5 lg:h-2 w-full bg-background-light dark:bg-background-dark rounded-full overflow-hidden border border-border-light dark:border-border-dark">
 						<motion.div
 							initial={{ width: 0 }}
 							animate={{ width: `${Math.min(100, burnRate)}%` }}
@@ -625,8 +640,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			{/* Main Grid: Revenue vs Expenses - Optimized layout */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
 				{/* Revenue Table */}
-				<section className="bg-muted border border-faint rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl flex flex-col">
-					<div className="p-5 lg:p-8 border-b border-faint flex justify-between items-center bg-muted">
+				<section className="bg-muted border border-border-light dark:border-border-dark rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl flex flex-col">
+					<div className="p-5 lg:p-8 border-b border-border-light dark:border-border-dark flex justify-between items-center bg-muted">
 						<div className="flex items-center gap-3">
 							<div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-success flex items-center justify-center border border-emerald-500/10">
 								<InflowIcon size={16} />
@@ -643,7 +658,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					<div className="hidden sm:block flex-1 overflow-x-auto scrollbar-hide">
 						<table className="w-full text-left border-collapse">
 							<thead>
-								<tr className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest border-b border-faint">
+								<tr className="text-[8px] lg:text-[9px] font-black text-text-muted uppercase tracking-widest border-b border-border-light dark:border-border-dark">
 									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
 									<th className="px-2 py-4">Số tiền</th>
 									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Phân loại</th>
@@ -663,32 +678,32 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 											<td className="px-3 md:px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
-														<span className="text-textSecondary group-hover:text-textPrimary transition-colors">
+														<span className="text-text-muted group-hover:text-text-main dark:text-white transition-colors">
 															{!isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : 'N/A'}
 														</span>
-														{isManual ? null : <span className="text-[9px] text-textSecondary font-medium opacity-60">Synced</span>}
+														{isManual ? null : <span className="text-[9px] text-text-muted font-medium opacity-60">Synced</span>}
 													</div>
-													<span className="text-[10px] text-textSecondary group-hover:text-textSecondary font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
+													<span className="text-[10px] text-text-muted group-hover:text-text-muted font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
 														{t.description || (isManual ? 'Nhập tay' : 'Ngân hàng')}
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-textPrimary font-bold">{formatVND(actual)}</td>
+											<td className="px-2 py-4 text-text-main dark:text-white font-bold">{formatVND(actual)}</td>
 											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
-												<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">{t.category || 'Thu nhập'}</span>
+												<span className="text-[8px] font-black text-text-muted bg-muted px-2 py-1 rounded border border-border-light dark:border-border-dark uppercase tracking-widest">{t.category || 'Thu nhập'}</span>
 											</td>
 											<td className="px-2 py-4 text-right">
 												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
 													<button
 														onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }}
-														className="p-1.5 md:p-2 hover:bg-muted text-textPrimary rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-muted text-text-main dark:text-white rounded-lg transition-colors"
 														title="Sửa"
 													>
 														<Edit2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 													<button
 														onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }}
-														className="p-1.5 md:p-2 hover:bg-muted text-textPrimary rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-muted text-text-main dark:text-white rounded-lg transition-colors"
 														title="Xóa"
 													>
 														<Trash2 size={12} className="md:w-[14px] md:h-[14px]" />
@@ -703,31 +718,31 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					</div>
 
 					{/* Mobile Card-based View */}
-					<div className="sm:hidden flex-1 overflow-y-auto max-h-[400px] border-t border-faint">
+					<div className="sm:hidden flex-1 overflow-y-auto max-h-[400px] border-t border-border-light dark:border-border-dark">
 						{currentIncomes.length > 0 ? currentIncomes.map((t, i) => (
 							<div
 								key={i}
 								onClick={() => setSelectedTx(t)}
-								className="p-4 border-b border-faint active:bg-muted transition-all"
+								className="p-4 border-b border-border-light dark:border-border-dark active:bg-muted transition-all"
 							>
 								<div className="flex justify-between items-start mb-2">
 									<div className="flex flex-col gap-1">
 										<div className="flex items-center gap-2">
-											<span className="text-[10px] font-black text-textSecondary uppercase">
+											<span className="text-[10px] font-black text-text-muted uppercase">
 												{new Date(t.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })}
 											</span>
 											{t.status !== 'MANUAL' && <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black">Synced</span>}
 										</div>
-										<h4 className="text-xs font-black text-textPrimary leading-tight max-w-[180px] truncate">{t.description || 'Thu nhập mới'}</h4>
+										<h4 className="text-xs font-black text-text-main dark:text-white leading-tight max-w-[180px] truncate">{t.description || 'Thu nhập mới'}</h4>
 									</div>
 									<div className="flex items-center gap-2">
-										<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} className="p-2 bg-muted rounded-lg text-textSecondary"><Edit2 size={14} /></button>
+										<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} className="p-2 bg-muted rounded-lg text-text-muted"><Edit2 size={14} /></button>
 										<button onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }} className="p-2 bg-danger/10 text-danger rounded-lg"><Trash2 size={14} /></button>
 									</div>
 								</div>
 								<div className="grid grid-cols-1 gap-2">
 									<div>
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
+										<p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
 										<p className="text-sm font-black text-success">{formatVND(t.actual || t.amount || 0)}</p>
 									</div>
 								</div>
@@ -745,8 +760,8 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				</section>
 
 				{/* Expense Table */}
-				<section className="bg-muted border border-faint rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl flex flex-col">
-					<div className="p-5 lg:p-8 border-b border-faint flex justify-between items-center bg-muted">
+				<section className="bg-muted border border-border-light dark:border-border-dark rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl flex flex-col">
+					<div className="p-5 lg:p-8 border-b border-border-light dark:border-border-dark flex justify-between items-center bg-muted">
 						<div className="flex items-center gap-3">
 							<div className="w-8 h-8 rounded-xl bg-red-500/10 text-danger flex items-center justify-center border border-red-500/10">
 								<OutflowIcon size={16} />
@@ -763,7 +778,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					<div className="hidden sm:block flex-1 overflow-x-auto scrollbar-hide">
 						<table className="w-full text-left border-collapse">
 							<thead>
-								<tr className="text-[8px] lg:text-[9px] font-black text-textSecondary uppercase tracking-widest border-b border-faint">
+								<tr className="text-[8px] lg:text-[9px] font-black text-text-muted uppercase tracking-widest border-b border-border-light dark:border-border-dark">
 									<th className="px-3 md:px-4 lg:px-6 py-4">Ngày / Mô tả</th>
 									<th className="px-2 py-4">Số tiền</th>
 									<th className="px-2 md:px-4 lg:px-6 py-4 text-right">Phân loại</th>
@@ -783,32 +798,32 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 											<td className="px-3 md:px-4 lg:px-6 py-4" onClick={() => setSelectedTx(t)}>
 												<div className="flex flex-col gap-1">
 													<div className="flex items-center gap-2">
-														<span className="text-textSecondary group-hover:text-textPrimary transition-colors">
+														<span className="text-text-muted group-hover:text-text-main dark:text-white transition-colors">
 															{!isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : 'N/A'}
 														</span>
-														{isManual ? null : <span className="text-[9px] text-textSecondary font-medium opacity-60">Synced</span>}
+														{isManual ? null : <span className="text-[9px] text-text-muted font-medium opacity-60">Synced</span>}
 													</div>
-													<span className="text-[10px] text-textSecondary group-hover:text-textSecondary font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
+													<span className="text-[10px] text-text-muted group-hover:text-text-muted font-medium truncate max-w-[80px] md:max-w-[150px]" title={t.description}>
 														{t.description || (isManual ? 'Nhập tay' : 'Hóa đơn')}
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-4 text-textPrimary font-bold">{formatVND(actual)}</td>
+											<td className="px-2 py-4 text-text-main dark:text-white font-bold">{formatVND(actual)}</td>
 											<td className="px-2 md:px-4 lg:px-6 py-4 text-right">
-												<span className="text-[8px] font-black text-textSecondary bg-muted px-2 py-1 rounded border border-faint uppercase tracking-widest">{t.category || 'Chi tiêu'}</span>
+												<span className="text-[8px] font-black text-text-muted bg-muted px-2 py-1 rounded border border-border-light dark:border-border-dark uppercase tracking-widest">{t.category || 'Chi tiêu'}</span>
 											</td>
 											<td className="px-2 py-4 text-right">
 												<div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
 													<button
 														onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }}
-														className="p-1.5 md:p-2 hover:bg-muted text-textPrimary rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-muted text-text-main dark:text-white rounded-lg transition-colors"
 														title="Sửa"
 													>
 														<Edit2 size={12} className="md:w-[14px] md:h-[14px]" />
 													</button>
 													<button
 														onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }}
-														className="p-1.5 md:p-2 hover:bg-muted text-textPrimary rounded-lg transition-colors"
+														className="p-1.5 md:p-2 hover:bg-muted text-text-main dark:text-white rounded-lg transition-colors"
 														title="Xóa"
 													>
 														<Trash2 size={12} className="md:w-[14px] md:h-[14px]" />
@@ -823,31 +838,31 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 					</div>
 
 					{/* Mobile Card-based View */}
-					<div className="sm:hidden flex-1 overflow-y-auto max-h-[400px] border-t border-faint">
+					<div className="sm:hidden flex-1 overflow-y-auto max-h-[400px] border-t border-border-light dark:border-border-dark">
 						{currentExpenses.length > 0 ? currentExpenses.map((t, i) => (
 							<div
 								key={i}
 								onClick={() => setSelectedTx(t)}
-								className="p-4 border-b border-faint active:bg-muted transition-all"
+								className="p-4 border-b border-border-light dark:border-border-dark active:bg-muted transition-all"
 							>
 								<div className="flex justify-between items-start mb-2">
 									<div className="flex flex-col gap-1">
 										<div className="flex items-center gap-2">
-											<span className="text-[10px] font-black text-textSecondary uppercase">
+											<span className="text-[10px] font-black text-text-muted uppercase">
 												{new Date(t.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })}
 											</span>
 											{t.status !== 'MANUAL' && <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black">Synced</span>}
 										</div>
-										<h4 className="text-xs font-black text-textPrimary leading-tight max-w-[180px] truncate">{t.description || 'Chi tiêu mới'}</h4>
+										<h4 className="text-xs font-black text-text-main dark:text-white leading-tight max-w-[180px] truncate">{t.description || 'Chi tiêu mới'}</h4>
 									</div>
 									<div className="flex items-center gap-2">
-										<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} className="p-2 bg-muted rounded-lg text-textSecondary"><Edit2 size={14} /></button>
+										<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} className="p-2 bg-muted rounded-lg text-text-muted"><Edit2 size={14} /></button>
 										<button onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(t.id); }} className="p-2 bg-danger/10 text-danger rounded-lg"><Trash2 size={14} /></button>
 									</div>
 								</div>
 								<div className="grid grid-cols-1 gap-2">
 									<div>
-										<p className="text-[8px] font-black text-textSecondary uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
+										<p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5 opacity-50">Số tiền</p>
 										<p className="text-sm font-black text-danger">{formatVND(t.actual || t.amount || 0)}</p>
 									</div>
 								</div>
@@ -868,11 +883,11 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			{/* Bottom Charts Row - Comparison Graphs */}
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
 				{/* Chart 1: Thu Nhập vs Chi Tiêu (Thực Tế) */}
-				<div className="bg-muted border border-faint rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
+				<div className="bg-muted border border-border-light dark:border-border-dark rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
 					<div className="flex justify-between items-center mb-4 md:mb-6">
 						<div className="max-w-[80%]">
-							<h4 className="text-[8px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Cân Đối</h4>
-							<h3 className="text-sm md:text-lg font-black text-textPrimary uppercase tracking-tighter leading-tight">Thu Nhập vs Chi Tiêu</h3>
+							<h4 className="text-[8px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Cân Đối</h4>
+							<h3 className="text-sm md:text-lg font-black text-text-main dark:text-white uppercase tracking-tighter leading-tight">Thu Nhập vs Chi Tiêu</h3>
 						</div>
 					</div>
 					<div className="h-[250px] w-full">
@@ -924,11 +939,11 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				</div>
 
 				{/* Chart 2: Kế Hoạch vs Thực Tế */}
-				<div className="bg-muted border border-faint rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
+				<div className="bg-muted border border-border-light dark:border-border-dark rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl">
 					<div className="flex justify-between items-center mb-4 md:mb-6">
 						<div className="max-w-[80%]">
-							<h4 className="text-[8px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Hiệu Suất</h4>
-							<h3 className="text-sm md:text-lg font-black text-textPrimary uppercase tracking-tighter leading-tight">Kế Hoạch vs Thực Tế</h3>
+							<h4 className="text-[8px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Hiệu Suất</h4>
+							<h3 className="text-sm md:text-lg font-black text-text-main dark:text-white uppercase tracking-tighter leading-tight">Kế Hoạch vs Thực Tế</h3>
 						</div>
 					</div>
 					<div className="h-[250px] w-full">
@@ -982,20 +997,20 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 			</div>
 
 			{/* Chart 3: Tổng Hợp Theo Tháng (Full Width) */}
-			<div className="bg-muted border border-faint rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl mb-12">
+			<div className="bg-muted border border-border-light dark:border-border-dark rounded-[24px] lg:rounded-[32px] p-3 md:p-6 lg:p-8 shadow-2xl mb-12">
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
 					<div className="max-w-full">
-						<h4 className="text-[8px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Xu Thế</h4>
-						<h3 className="text-sm md:text-xl font-black text-textPrimary uppercase tracking-tighter leading-tight">Tổng Hợp Thu Nhập & Chi Tiêu Hàng Tháng</h3>
+						<h4 className="text-[8px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Xu Thế</h4>
+						<h3 className="text-sm md:text-xl font-black text-text-main dark:text-white uppercase tracking-tighter leading-tight">Tổng Hợp Thu Nhập & Chi Tiêu Hàng Tháng</h3>
 					</div>
 					<div className="flex gap-4">
 						<div className="flex items-center gap-2">
 							<div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-emerald-500"></div>
-							<span className="text-[8px] md:text-[10px] font-bold text-textSecondary uppercase">Thu Nhập</span>
+							<span className="text-[8px] md:text-[10px] font-bold text-text-muted uppercase">Thu Nhập</span>
 						</div>
 						<div className="flex items-center gap-2">
 							<div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-red-500"></div>
-							<span className="text-[8px] md:text-[10px] font-bold text-textSecondary uppercase">Chi Tiêu</span>
+							<span className="text-[8px] md:text-[10px] font-bold text-text-muted uppercase">Chi Tiêu</span>
 						</div>
 					</div>
 				</div>
@@ -1063,16 +1078,16 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							initial={{ opacity: 0, scale: 0.95, y: 30 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 30 }}
-							className="bg-surface border border-faint w-full max-w-lg rounded-[24px] md:rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.2)] max-h-[92vh] flex flex-col"
+							className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark w-full max-w-lg rounded-[24px] md:rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.2)] max-h-[92vh] flex flex-col"
 						>
 							<form onSubmit={handleAddTransaction} className="flex flex-col h-full overflow-hidden">
 								<div className="p-5 md:p-10 pb-0 md:pb-0">
 									<div className="flex justify-between items-center mb-4 md:mb-8">
 										<div>
-											<h3 className="text-lg md:text-2xl font-black tracking-tighter text-textPrimary">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
-											<p className="text-[8px] md:text-[10px] font-black text-textSecondary uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ' : 'Quản Lý Hồ Sơ'}</p>
+											<h3 className="text-lg md:text-2xl font-black tracking-tighter text-text-main dark:text-white">{editingId ? 'Sửa Bản Ghi' : 'Thêm Bản Ghi'}</h3>
+											<p className="text-[8px] md:text-[10px] font-black text-text-muted uppercase tracking-widest">{editingId ? 'Cập Nhật Hồ Sơ' : 'Quản Lý Hồ Sơ'}</p>
 										</div>
-										<button type="button" onClick={() => { setIsEntryModalOpen(false); setEditingId(null); setFormData(initialFormState); setShowBankingFields(false); }} className="w-8 h-8 md:w-10 md:h-10 bg-muted rounded-full flex items-center justify-center text-textSecondary hover:text-textPrimary transition-all">
+										<button type="button" onClick={() => { setIsEntryModalOpen(false); setEditingId(null); setFormData(initialFormState); setShowBankingFields(false); }} className="w-8 h-8 md:w-10 md:h-10 bg-muted rounded-full flex items-center justify-center text-text-muted hover:text-text-main dark:text-white transition-all">
 											<X size={18} />
 										</button>
 									</div>
@@ -1081,18 +1096,18 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 								<div className="flex-1 overflow-y-auto p-5 md:p-10 pt-0 md:pt-0 scrollbar-hide">
 									<div className="space-y-5 md:space-y-8">
 										{/* Type Toggle */}
-										<div className="flex bg-muted p-1 rounded-[16px] md:rounded-[20px] border border-faint">
+										<div className="flex bg-muted p-1 rounded-[16px] md:rounded-[20px] border border-border-light dark:border-border-dark">
 											<button
 												type="button"
 												onClick={() => setFormData({ ...formData, type: 'INCOME' })}
-												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'INCOME' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
+												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'INCOME' ? 'bg-blue-600 text-text-main dark:text-white shadow-lg' : 'text-text-muted hover:text-text-main dark:text-white'}`}
 											>
 												Khoản Thu
 											</button>
 											<button
 												type="button"
 												onClick={() => setFormData({ ...formData, type: 'EXPENSE' })}
-												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'EXPENSE' ? 'bg-blue-600 text-textPrimary shadow-lg' : 'text-textSecondary hover:text-textPrimary'}`}
+												className={`flex-1 py-3 md:py-4 rounded-[12px] md:rounded-[14px] text-[9px] md:text-[10px] font-black transition-all tracking-widest uppercase ${formData.type === 'EXPENSE' ? 'bg-blue-600 text-text-main dark:text-white shadow-lg' : 'text-text-muted hover:text-text-main dark:text-white'}`}
 											>
 												Khoản Chi
 											</button>
@@ -1100,35 +1115,35 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 
 										{/* Date Field */}
 										<div>
-											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Ngày giao dịch</label>
+											<label className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block mb-2 md:mb-3">Ngày giao dịch</label>
 											<input
 												type="date"
 												required
 												value={formData.date}
 												onChange={e => setFormData({ ...formData, date: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+												className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 											/>
 										</div>
 
 										{/* Transaction Amount */}
 										<div>
-											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền giao dịch</label>
+											<label className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block mb-2 md:mb-3">Số tiền giao dịch</label>
 											<input
 												type="number"
 												value={formData.actual}
 												onChange={e => setFormData({ ...formData, actual: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-textPrimary focus:border-blue-500 outline-none transition-all"
+												className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-base md:text-xl font-black text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 												placeholder="0"
 											/>
 										</div>
 
 										<div className="grid grid-cols-2 gap-4 md:gap-6">
 											<div>
-												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Danh mục</label>
+												<label className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block mb-2 md:mb-3">Danh mục</label>
 												<select
 													value={formData.category}
 													onChange={e => setFormData({ ...formData, category: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary outline-none appearance-none"
+													className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-text-main dark:text-white outline-none appearance-none"
 												>
 													<option value="Lương">Lương/Thu nhập</option>
 													<option value="Kinh doanh">Kinh doanh</option>
@@ -1138,33 +1153,33 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 												</select>
 											</div>
 											<div>
-												<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Nguồn</label>
+												<label className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block mb-2 md:mb-3">Nguồn</label>
 												<input
 													type="text"
 													value={formData.source}
 													onChange={e => setFormData({ ...formData, source: e.target.value })}
-													className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-textPrimary outline-none"
+													className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-black text-text-main dark:text-white outline-none"
 													placeholder="Ngân hàng, Tiền mặt..."
 												/>
 											</div>
 										</div>
 
 										<div>
-											<label className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] block mb-2 md:mb-3">Ghi chú</label>
+											<label className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block mb-2 md:mb-3">Ghi chú</label>
 											<textarea
 												value={formData.description}
 												onChange={e => setFormData({ ...formData, description: e.target.value })}
-												className="w-full bg-muted border border-faint rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-bold text-textPrimary outline-none h-16 md:h-20 resize-none"
+												className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl md:rounded-2xl py-3 md:py-4 px-4 md:px-6 text-[11px] md:text-xs font-bold text-text-main dark:text-white outline-none h-16 md:h-20 resize-none"
 												placeholder="Chi tiết giao dịch nội bộ..."
 											/>
 										</div>
 
 										{/* Advanced Banking Fields */}
-										<div className="pt-6 border-t border-faint">
+										<div className="pt-6 border-t border-border-light dark:border-border-dark">
 											<button
 												type="button"
 												onClick={() => setShowBankingFields(!showBankingFields)}
-												className="w-full py-3 bg-muted border border-faint rounded-xl text-[10px] font-black text-blue-500 uppercase tracking-widest hover:bg-muted/50 transition-all flex items-center justify-center gap-2 mb-5"
+												className="w-full py-3 bg-muted border border-border-light dark:border-border-dark rounded-xl text-[10px] font-black text-blue-500 uppercase tracking-widest hover:bg-muted/50 transition-all flex items-center justify-center gap-2 mb-5"
 											>
 												{showBankingFields ? <ChevronRight size={14} className="rotate-90" /> : <Plus size={14} />}
 												{showBankingFields ? 'Ẩn thông tin ngân hàng' : 'Thông tin ngân hàng (Tùy chọn)'}
@@ -1180,22 +1195,22 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 													>
 														<div className="grid grid-cols-2 gap-4">
 															<div>
-																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Mã giao dịch</label>
+																<label className="text-[9px] font-black text-text-muted uppercase block mb-2">Mã giao dịch</label>
 																<input
 																	type="text"
 																	value={formData.orderNo}
 																	onChange={e => setFormData({ ...formData, orderNo: e.target.value })}
-																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 px-4 text-[11px] font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 																	placeholder="Ví d: 12845..."
 																/>
 															</div>
 															<div>
-																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Người gửi</label>
+																<label className="text-[9px] font-black text-text-muted uppercase block mb-2">Người gửi</label>
 																<input
 																	type="text"
 																	value={formData.remitter}
 																	onChange={e => setFormData({ ...formData, remitter: e.target.value })}
-																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 px-4 text-[11px] font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 																	placeholder="Tên người gửi..."
 																/>
 															</div>
@@ -1203,34 +1218,34 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 
 														<div className="grid grid-cols-2 gap-4">
 															<div>
-																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Số TK Nguồn</label>
+																<label className="text-[9px] font-black text-text-muted uppercase block mb-2">Số TK Nguồn</label>
 																<input
 																	type="text"
 																	value={formData.sourceAcc}
 																	onChange={e => setFormData({ ...formData, sourceAcc: e.target.value })}
-																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 px-4 text-[11px] font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 																	placeholder="046100..."
 																/>
 															</div>
 															<div>
-																<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Số TK Nhận</label>
+																<label className="text-[9px] font-black text-text-muted uppercase block mb-2">Số TK Nhận</label>
 																<input
 																	type="text"
 																	value={formData.targetAcc}
 																	onChange={e => setFormData({ ...formData, targetAcc: e.target.value })}
-																	className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																	className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 px-4 text-[11px] font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 																	placeholder="Số tài khoản..."
 																/>
 															</div>
 														</div>
 
 														<div>
-															<label className="text-[9px] font-black text-textSecondary uppercase block mb-2">Tên người hưởng</label>
+															<label className="text-[9px] font-black text-text-muted uppercase block mb-2">Tên người hưởng</label>
 															<input
 																type="text"
 																value={formData.targetName}
 																onChange={e => setFormData({ ...formData, targetName: e.target.value })}
-																className="w-full bg-muted border border-faint rounded-xl py-3 px-4 text-[11px] font-bold text-textPrimary focus:border-blue-500 outline-none transition-all"
+																className="w-full bg-muted border border-border-light dark:border-border-dark rounded-xl py-3 px-4 text-[11px] font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
 																placeholder="Họ và tên người nhận..."
 															/>
 														</div>
@@ -1245,7 +1260,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 									<button
 										type="submit"
 										disabled={isSaving}
-										className="w-full py-4 md:py-5 bg-blue-600 text-textPrimary text-[10px] md:text-xs font-black uppercase tracking-widest rounded-2xl md:rounded-3xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
+										className="w-full py-4 md:py-5 bg-blue-600 text-text-main dark:text-white text-[10px] md:text-xs font-black uppercase tracking-widest rounded-2xl md:rounded-3xl hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
 									>
 										{isSaving ? 'Đang xử lý...' : (editingId ? 'Cập nhật bản ghi' : 'Xác nhận bản ghi')}
 									</button>
@@ -1265,35 +1280,35 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 30 }}
 							onClick={e => e.stopPropagation()}
-							className="bg-surface border border-faint w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
+							className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark w-full max-w-lg rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
 						>
 							<div className="p-6 md:p-10">
 								<div className="flex justify-between items-center mb-6 md:mb-10">
 									<div>
-										<h3 className="text-xl md:text-2xl font-black tracking-tighter text-textPrimary">Chi Tiết Giao Dịch</h3>
-										<p className="text-[9px] md:text-[10px] font-black text-textSecondary uppercase tracking-widest">
+										<h3 className="text-xl md:text-2xl font-black tracking-tighter text-text-main dark:text-white">Chi Tiết Giao Dịch</h3>
+										<p className="text-[9px] md:text-[10px] font-black text-text-muted uppercase tracking-widest">
 											{selectedTx.type === 'INCOME' ? 'Khoản Thu' : 'Khoản Chi'} • {selectedTx.status === 'MANUAL' ? 'Bản ghi thủ công' : 'Đã đồng bộ ngân hàng'}
 										</p>
 									</div>
-									<button onClick={() => setSelectedTx(null)} className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-textSecondary hover:text-textPrimary transition-all">
+									<button onClick={() => setSelectedTx(null)} className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-text-muted hover:text-text-main dark:text-white transition-all">
 										<X size={20} />
 									</button>
 								</div>
 
 								<div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
-									<div className="bg-muted p-5 rounded-3xl border border-faint">
-										<p className="text-[10px] font-black text-textSecondary uppercase tracking-widest mb-1">Mô tả / Nội dung</p>
-										<p className="text-base font-bold text-textPrimary leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
+									<div className="bg-muted p-5 rounded-3xl border border-border-light dark:border-border-dark">
+										<p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Mô tả / Nội dung</p>
+										<p className="text-base font-bold text-text-main dark:text-white leading-tight">{selectedTx.description || 'Không có mô tả'}</p>
 									</div>
 
 									<div className="grid grid-cols-2 gap-3">
-										<div className="bg-muted p-4 rounded-3xl border border-faint">
-											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Ngày tháng</p>
-											<p className="text-xs font-bold text-textPrimary">{new Date(selectedTx.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+										<div className="bg-muted p-4 rounded-3xl border border-border-light dark:border-border-dark">
+											<p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Ngày tháng</p>
+											<p className="text-xs font-bold text-text-main dark:text-white">{new Date(selectedTx.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
 										</div>
-										<div className="bg-muted p-4 rounded-3xl border border-faint">
-											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Danh mục</p>
-											<p className="text-xs font-bold text-textPrimary">{selectedTx.category || 'Khác'}</p>
+										<div className="bg-muted p-4 rounded-3xl border border-border-light dark:border-border-dark">
+											<p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Danh mục</p>
+											<p className="text-xs font-bold text-text-main dark:text-white">{selectedTx.category || 'Khác'}</p>
 										</div>
 									</div>
 
@@ -1305,36 +1320,36 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 										</div>
 
 										<div className="grid grid-cols-2 gap-4">
-											<div className="p-3 bg-surface rounded-2xl border border-faint">
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người gửi</p>
-												<p className="text-[10px] font-black text-textPrimary truncate">{selectedTx.remitter || 'N/A'}</p>
-												<p className="text-[8px] text-textSecondary font-mono mt-0.5">{selectedTx.sourceAcc || ''}</p>
+											<div className="p-3 bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark">
+												<p className="text-[8px] font-black text-text-muted uppercase mb-1">Người gửi</p>
+												<p className="text-[10px] font-black text-text-main dark:text-white truncate">{selectedTx.remitter || 'N/A'}</p>
+												<p className="text-[8px] text-text-muted font-mono mt-0.5">{selectedTx.sourceAcc || ''}</p>
 											</div>
-											<div className="p-3 bg-surface rounded-2xl border border-faint text-right">
-												<p className="text-[8px] font-black text-textSecondary uppercase mb-1">Người hưởng</p>
-												<p className="text-[10px] font-black text-textPrimary truncate">{selectedTx.targetName || 'N/A'}</p>
-												<p className="text-[8px] text-textSecondary font-mono mt-0.5">{selectedTx.targetAcc || ''}</p>
+											<div className="p-3 bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark text-right">
+												<p className="text-[8px] font-black text-text-muted uppercase mb-1">Người hưởng</p>
+												<p className="text-[10px] font-black text-text-main dark:text-white truncate">{selectedTx.targetName || 'N/A'}</p>
+												<p className="text-[8px] text-text-muted font-mono mt-0.5">{selectedTx.targetAcc || ''}</p>
 											</div>
 										</div>
 
 										<div className="flex justify-between items-center px-1">
 											<div>
-												<p className="text-[8px] font-black text-textSecondary uppercase">Mã giao dịch</p>
-												<p className="text-[10px] font-bold text-textPrimary">{selectedTx.orderNo || 'N/A'}</p>
+												<p className="text-[8px] font-black text-text-muted uppercase">Mã giao dịch</p>
+												<p className="text-[10px] font-bold text-text-main dark:text-white">{selectedTx.orderNo || 'N/A'}</p>
 											</div>
 											{selectedTx.transDate && (
 												<div className="text-right">
-													<p className="text-[8px] font-black text-textSecondary uppercase">Thời gian thực tế</p>
-													<p className="text-[10px] font-bold text-textPrimary">{selectedTx.transDate}</p>
+													<p className="text-[8px] font-black text-text-muted uppercase">Thời gian thực tế</p>
+													<p className="text-[10px] font-bold text-text-main dark:text-white">{selectedTx.transDate}</p>
 												</div>
 											)}
 										</div>
 									</div>
 
 									<div className="grid grid-cols-1">
-										<div className="bg-surface p-5 rounded-[24px] border border-faint shadow-sm">
-											<p className="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Số tiền giao dịch</p>
-											<p className="text-lg font-black text-textPrimary">{formatVND(selectedTx.actual || selectedTx.amount || 0)}</p>
+										<div className="bg-surface-light dark:bg-surface-dark p-5 rounded-[24px] border border-border-light dark:border-border-dark shadow-sm">
+											<p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Số tiền giao dịch</p>
+											<p className="text-lg font-black text-text-main dark:text-white">{formatVND(selectedTx.actual || selectedTx.amount || 0)}</p>
 										</div>
 									</div>
 
@@ -1342,7 +1357,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 
 								<button
 									onClick={() => setSelectedTx(null)}
-									className="w-full mt-10 py-5 bg-muted text-textPrimary text-xs font-black uppercase tracking-widest rounded-3xl hover:bg-muted transition-all active:scale-95"
+									className="w-full mt-10 py-5 bg-muted text-text-main dark:text-white text-xs font-black uppercase tracking-widest rounded-3xl hover:bg-muted transition-all active:scale-95"
 								>
 									Đóng
 								</button>
@@ -1367,7 +1382,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							initial={{ scale: 0.9, opacity: 0, y: 20 }}
 							animate={{ scale: 1, opacity: 1, y: 0 }}
 							exit={{ scale: 0.9, opacity: 0, y: 20 }}
-							className="relative bg-surface w-full max-w-xl rounded-[40px] shadow-2xl border border-primary/20 overflow-hidden"
+							className="relative bg-surface-light dark:bg-surface-dark w-full max-w-xl rounded-[40px] shadow-2xl border border-primary/20 overflow-hidden"
 						>
 							<div className="relative h-32 bg-gradient-to-br from-primary to-blue-700 p-8 flex items-center justify-between">
 								<div className="z-10">
@@ -1378,20 +1393,20 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 							</div>
 
 							<div className="p-8 space-y-6">
-								<div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide text-textSecondary text-[11px] leading-relaxed">
-									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+								<div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide text-text-muted text-[11px] leading-relaxed">
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-border-light dark:border-border-dark">
 										<ShieldCheck className="text-success shrink-0" size={20} />
-										<p><span className="text-textPrimary font-bold">Cam kết Quyền riêng tư:</span> Chúng tôi chỉ quét các email liên quan đến biên lai ngân hàng. Tuyệt đối không đọc, lưu trữ hoặc chia sẻ các email cá nhân khác.</p>
+										<p><span className="text-text-main dark:text-white font-bold">Cam kết Quyền riêng tư:</span> Chúng tôi chỉ quét các email liên quan đến biên lai ngân hàng. Tuyệt đối không đọc, lưu trữ hoặc chia sẻ các email cá nhân khác.</p>
 									</div>
-									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-border-light dark:border-border-dark">
 										<Lock className="text-primary shrink-0" size={20} />
-										<p><span className="text-textPrimary font-bold">Bảo mật Dữ liệu:</span> Toàn bộ quyền truy cập được mã hóa. Bạn có thể thu hồi quyền bất kỳ lúc nào trực tiếp trong cài đặt Google.</p>
+										<p><span className="text-text-main dark:text-white font-bold">Bảo mật Dữ liệu:</span> Toàn bộ quyền truy cập được mã hóa. Bạn có thể thu hồi quyền bất kỳ lúc nào trực tiếp trong cài đặt Google.</p>
 									</div>
-									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-faint">
+									<div className="flex gap-4 p-4 bg-muted rounded-2xl border border-border-light dark:border-border-dark">
 										<Zap className="text-amber-500 shrink-0" size={20} />
-										<p><span className="text-textPrimary font-bold">Tự động 100%:</span> Sau khi đồng ý, hệ thống sẽ tự động đồng bộ giao dịch từ 20+ ngân hàng phổ biến (VCB, TCB, MB, MoMo...)</p>
+										<p><span className="text-text-main dark:text-white font-bold">Tự động 100%:</span> Sau khi đồng ý, hệ thống sẽ tự động đồng bộ giao dịch từ 20+ ngân hàng phổ biến (VCB, TCB, MB, MoMo...)</p>
 									</div>
-									<div className="p-4 border border-faint rounded-2xl italic opacity-60">
+									<div className="p-4 border border-border-light dark:border-border-dark rounded-2xl italic opacity-60">
 										Bằng cách nhấn "Tôi đồng ý", bạn xác nhận đã đọc và chấp thuận các điều khoản dịch vụ và chính sách bảo mật của Vifun.
 									</div>
 								</div>
@@ -1406,7 +1421,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 									</button>
 									<button
 										onClick={() => setIsPremiumModalOpen(false)}
-										className="w-full py-4 text-textSecondary font-bold text-[10px] uppercase tracking-widest hover:text-textPrimary transition-all"
+										className="w-full py-4 text-text-muted font-bold text-[10px] uppercase tracking-widest hover:text-text-main dark:text-white transition-all"
 									>
 										Để sau
 									</button>
@@ -1417,23 +1432,7 @@ const Finance = ({ userEmail, isPro, subStart, subEnd, setActiveTab }) => {
 				)}
 			</AnimatePresence >
 
-			<style>{`
-				.glass {
-					background: rgba(255, 255, 255, 0.03);
-					backdrop-filter: blur(20px);
-				}
-				.scrollbar-hide::-webkit-scrollbar {
-					display: none;
-				}
-				.scrollbar-hide {
-					-ms-overflow-style: none;
-					scrollbar-width: none;
-				}
-				@media (max-width: 640px) {
-					.text-responsive-base { font-size: 10px; }
-					.p-responsive { padding: 1rem; }
-				}
-			`}</style>
+
 		</div >
 	);
 };

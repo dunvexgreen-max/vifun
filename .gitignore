@@ -23,5 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 GAS/
+src/stitch_designs/
+stitch_*.cjs
+push_to_stitch.cjs
+debug_stitch.cjs
+STITCH_INTERFACE_SUMMARY.md
+stitch_design_schema.md
+stitch_tools.json
+tailwind.config.js.old
 
 .env

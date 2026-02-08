@@ -1,88 +1,116 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0B111D;
-  --surface: #121A29;
-  --primary: #3B82F6;
-  --primary-hover: #2563EB;
-  --success: #10B981;
-  --danger: #EF4444;
-  --warning: #F59E0B;
-  --textPrimary: #FFFFFF;
-  --textSecondary: #94A3B8;
-  --muted: rgba(255, 255, 255, 0.04);
-  --faint-border: rgba(255, 255, 255, 0.08);
-  --scrollbar: #1E293B;
-  --card-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.4);
-  color-scheme: dark;
+@theme {
+  /* EXACT COLORS FROM YOUR STITCH DESIGNS */
+  --color-primary: #f4e225;
+  --color-primary-dark: #d4c210;
+  --color-accent-gold: #9c9549;
+
+  --color-background-light: #fcfbf8;
+  --color-background-dark: #222110;
+
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #2c2b18;
+
+  --color-border-light: #f4f3e7;
+  --color-border-dark: #3a3820;
+
+  --color-text-main: #1c1b0d;
+  --color-text-muted: #9c9549;
+
+  /* Border Radius from designs */
+  --radius-default: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadows from designs */
+  --shadow-premium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-.light {
-  --background: #F1F5F9;
-  --surface: #FFFFFF;
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --success: #059669;
-  --danger: #E11D48;
-  --warning: #B45309;
-  --textPrimary: #0F172A;
-  --textSecondary: #64748B;
-  --muted: #E2E8F0;
-  --faint-border: rgba(0, 0, 0, 0.1);
-  --scrollbar: #CBD5E1;
-  --card-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.08), 0 4px 10px -5px rgba(15, 23, 42, 0.04);
+:root {
+  --bg-color: #fcfbf8;
+  --surface-color: #090707;
+  --border-color: #f4f3e7;
+  --text-color: #1c1b0d;
+  --muted-color: #9c9549;
   color-scheme: light;
 }
 
-@theme {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-primary: var(--primary);
-  --color-primaryHover: var(--primary-hover);
-  --color-success: var(--success);
-  --color-danger: var(--danger);
-  --color-warning: var(--warning);
-  --color-textPrimary: var(--textPrimary);
-  --color-textSecondary: var(--textSecondary);
-  --color-muted: var(--muted);
-  --color-faint: var(--faint-border);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+.dark {
+  --bg-color: #222110;
+  --surface-color: #2c2b18;
+  --border-color: #3a3820;
+  --text-color: #ffffff;
+  --muted-color: #9c9549;
+  color-scheme: dark;
 }
 
-body {
-  @apply bg-background text-textPrimary antialiased transition-colors duration-500 overflow-x-hidden;
-  margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+@layer base {
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    @apply font-sans antialiased transition-colors duration-200;
+  }
 }
 
-/* More Premium & Lucid Glass Effect */
-.glass {
-  background: var(--surface);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--faint-border);
-  box-shadow: var(--card-shadow);
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+@layer components {
+
+  /* Semantic classes mapping back to your design tokens for compatibility */
+  .bg-app-bg {
+    @apply bg-background-light dark:bg-background-dark;
+  }
+
+  .bg-app-surface {
+    @apply bg-surface-light dark:bg-surface-dark;
+  }
+
+  .text-app-text {
+    @apply text-text-main dark:text-white;
+  }
+
+  .border-app-border {
+    @apply border-border-light dark:border-border-dark;
+  }
+
+  /* Premium Components matching HTML designs exactly */
+  .card {
+    @apply p-6 rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-text-main font-bold py-3 px-6 rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm;
+  }
+
+  .input-field {
+    @apply w-full bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white;
+  }
+
+  .badge-success {
+    @apply flex items-center text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded text-xs font-bold;
+  }
+
+  .badge-danger {
+    @apply flex items-center text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded text-xs font-bold;
+  }
+
+  .glass-header {
+    @apply sticky top-0 z-50 border-b border-border-light dark:border-border-dark bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-6 py-4 md:px-10 transition-all;
+  }
+
+  .text-h1 {
+    @apply text-4xl md:text-5xl font-black tracking-tighter text-primary-dark dark:text-primary leading-tight;
+  }
+
+  .text-h2 {
+    @apply text-xl lg:text-2xl font-bold tracking-tight text-text-main dark:text-white;
+  }
+
+  .text-label {
+    @apply text-xs font-semibold text-text-main dark:text-gray-300 uppercase tracking-wider;
+  }
 }
 
-.light .glass {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.glass:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
-}
-
-.light .glass:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.1);
-}
-
-/* Customscrollbar */
+/* Custom Yellow Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -93,20 +121,5 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  filter: brightness(0.8);
-}
-
-.scroll-smooth-touch {
-  -webkit-overflow-scrolling: touch;
-}
-
-.chart-container {
-  position: relative;
-  height: 300px;
-  width: 100%;
+  @apply bg-border-light dark:bg-border-dark hover:bg-primary/50 rounded-full;
 }

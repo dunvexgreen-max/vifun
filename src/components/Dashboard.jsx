@@ -1,288 +1,218 @@
-import React from 'react';
-import { TrendingUp, TrendingDown, Wallet, PieChart, Activity, RefreshCw } from 'lucide-react';
-import { api } from '../api';
+import React, { useState } from 'react';
 
-const StatCard = ({ title, value, change, icon: Icon }) => (
-	<div className="glass p-6 rounded-[32px] flex flex-col gap-4 border-faint shadow-xl">
-		<div className="flex justify-between items-start">
-			<div className="p-3 rounded-2xl bg-primary/10 text-primary">
-				<Icon size={24} strokeWidth={2.5} />
-			</div>
-			<div className={`flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg ${parseFloat(change) >= 0 ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
-				{parseFloat(change) >= 0 ? <TrendingUp size={14} strokeWidth={3} /> : <TrendingDown size={14} strokeWidth={3} />}
-				{Math.abs(change)}%
-			</div>
-		</div>
-		<div>
-			<p className="text-textSecondary text-[10px] font-black uppercase tracking-[0.15em] opacity-60">{title}</p>
-			<h3 className="text-2xl font-black mt-1 tracking-tighter">{value}</h3>
-		</div>
-	</div>
-);
-
-const Dashboard = ({ profile, refreshProfile }) => {
-	const [isRefreshing, setIsRefreshing] = React.useState(false);
-	const [historyPage, setHistoryPage] = React.useState(1);
-
-	const formatVND = (val) => new Intl.NumberFormat('vi-VN').format(Math.round(val)) + ' đ';
-
-	const handleRefresh = async () => {
-		if (isRefreshing) return;
-		setIsRefreshing(true);
-		try {
-			// 1. Gửi lệnh lên Backend để nó toggle cột K (phá cache)
-			await api.call('refreshStockPrices', { apiKey: 'STOCKS_SIM_SECURE_V1_2024_@SEC' });
-			// 2. Tải lại Profile để lấy giá mới về Web
-			if (refreshProfile) await refreshProfile();
-		} catch (error) {
-			console.error("Lỗi làm mới giá:", error);
-		} finally {
-			setIsRefreshing(false);
-		}
+const Dashboard = ({ profile = {} }) => {
+	const formatVND = (amount) => {
+		return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
 	};
 
-	const realizedPnL = profile.realizedPnL || 0;
-	const realizedPct = profile.totalInvestment > 0 ? ((realizedPnL / profile.totalInvestment) * 100).toFixed(2) : '0.00';
-
-	const unrealizedPnL = profile.unrealizedPnL || 0;
-	const totalPnL = profile.totalPnL || 0;
 	const totalAssets = profile.totalAssets || 0;
-	const totalInvestment = profile.totalInvestment || 0;
-	const stockValue = totalAssets - (profile.balance || 0);
-	const cashWeight = totalAssets > 0 ? ((profile.balance || 0) / totalAssets) * 100 : 100;
+	const balance = profile.balance || 0;
+	const totalPnL = profile.totalPnL || 0;
+	const totalPnLPct = profile.totalInvestment > 0 ? (totalPnL / profile.totalInvestment * 100) : 0;
 
-	const itemsPerPage = 5;
-	const totalHistoryItems = profile.recentHistory?.length || 0;
-	const totalHistoryPages = Math.ceil(totalHistoryItems / itemsPerPage);
-	const currentHistory = profile.recentHistory?.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage) || [];
+	const [tradeType, setTradeType] = useState('buy');
+	const [ticker, setTicker] = useState('HPG');
+	const [amount, setAmount] = useState('');
 
 	return (
-		<div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500">
-			<div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 px-2">
-				<div>
-					<h1 className="text-3xl lg:text-4xl font-black tracking-tighter">XIN CHÀO, {profile.email.split('@')[0].toUpperCase()}!</h1>
-					<p className="text-textSecondary font-bold text-xs lg:text-sm mt-1 uppercase tracking-widest opacity-60 italic">Bách khoa toàn thư giao dịch của bạn</p>
-				</div>
-				<div className="w-full md:w-auto flex items-center gap-3">
-					<button
-						onClick={handleRefresh}
-						disabled={isRefreshing}
-						className={`flex items-center gap-2 p-3 rounded-2xl border border-faint transition-all ${isRefreshing ? 'bg-primary/20 text-primary animate-pulse' : 'glass hover:bg-muted text-textSecondary hover:text-textPrimary active:scale-95'}`}
-						title="Làm mới giá từ thị trường"
-					>
-						<RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
-						<span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Làm mới giá</span>
-					</button>
+		<div className="flex-1 w-full animate-in fade-in duration-500">
+			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 
-					<div className="glass px-6 py-3 rounded-2xl border-faint bg-muted text-left md:text-right flex-1 md:flex-none">
-						<p className="text-textSecondary text-[9px] font-black uppercase tracking-[0.2em] mb-1">Cập nhật lần cuối</p>
-						<p className="font-black text-primary text-lg lg:text-xl tracking-tighter">{new Date().toLocaleTimeString('vi-VN')}</p>
-					</div>
-				</div>
-			</div>
+				{/* --- Left Column --- */}
+				<div className="lg:col-span-8 flex flex-col gap-6">
 
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-				<StatCard
-					title="Tổng giá trị cổ phiếu"
-					value={formatVND(stockValue)}
-					change={totalAssets > 0 ? ((stockValue / totalAssets) * 100).toFixed(1) : 0}
-					icon={Activity}
-				/>
-				<StatCard
-					title="Lợi nhuận mua bán cổ phiếu"
-					value={(realizedPnL >= 0 ? '+' : '') + formatVND(realizedPnL)}
-					change={realizedPct}
-					icon={PieChart}
-				/>
-				<StatCard
-					title="Tổng phí dịch vụ"
-					value={formatVND(profile.totalFees || 0)}
-					change={profile.totalInvestment > 0 ? ((profile.totalFees / profile.totalInvestment) * 100).toFixed(2) : 0}
-					icon={TrendingUp}
-				/>
-				<StatCard
-					title="Tổng vốn đã nạp"
-					value={formatVND(totalInvestment)}
-					change={0}
-					icon={Wallet}
-				/>
-			</div>
-
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-				<div className="lg:col-span-2 space-y-8">
-					<div className="glass p-8 rounded-[40px] overflow-hidden flex flex-col gap-8 border-faint bg-gradient-to-br from-white/[0.03] to-transparent">
-						<div className="flex justify-between items-center">
-							<h2 className="text-xl font-black tracking-tight uppercase tracking-[0.1em]">PHÂN BỔ TÀI SẢN</h2>
-							<div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] italic border border-primary/20 animate-pulse">Live Tracking</div>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						{/* Total Balance Card */}
+						<div className="card flex flex-col justify-between">
+							<div className="flex justify-between items-start mb-4">
+								<div className="p-2 bg-primary/20 rounded-lg text-text-main dark:text-white dark:text-primary">
+									<span className="material-symbols-outlined">account_balance_wallet</span>
+								</div>
+								<span className={totalPnL >= 0 ? 'badge-success' : 'badge-danger'}>
+									<span className="material-symbols-outlined text-sm mr-1">{totalPnL >= 0 ? 'trending_up' : 'trending_down'}</span>
+									{totalPnL >= 0 ? '+' : ''}{totalPnLPct.toFixed(1)}%
+								</span>
+							</div>
+							<div>
+								<p className="text-body-muted">Tổng tài sản</p>
+								<h3 className="text-h1 mt-1">{formatVND(totalAssets)}</h3>
+							</div>
 						</div>
 
-						<div className="space-y-10 py-4">
-							<div className="relative h-4 w-full bg-muted rounded-full overflow-hidden flex border border-faint shadow-inner">
-								<div
-									className="h-full bg-primary transition-all duration-1000 ease-out relative"
-									style={{ width: `${cashWeight}%` }}
-								>
-									<div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
+						{/* Cash Balance Card */}
+						<div className="card flex flex-col justify-between">
+							<div className="flex justify-between items-start mb-4">
+								<div className="p-2 bg-primary/20 rounded-lg text-text-main dark:text-white dark:text-primary">
+									<span className="material-symbols-outlined">credit_card</span>
 								</div>
-								<div
-									className="h-full bg-success transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(34,197,94,0.3)]"
-									style={{ width: `${100 - cashWeight}%` }}
-								></div>
+								<span className="text-label">Sẵn dụng</span>
 							</div>
-
-							<div className="grid grid-cols-2 gap-12">
-								<div className="flex items-center gap-5">
-									<div className="w-2 h-12 bg-primary rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-									<div>
-										<p className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Tiền mặt</p>
-										<p className="text-3xl font-black tracking-tighter">{cashWeight.toFixed(1)}%</p>
-										<p className="text-xs font-bold text-textSecondary mt-0.5">{formatVND(profile.balance || 0)}</p>
-									</div>
-								</div>
-								<div className="flex items-center gap-5">
-									<div className="w-2 h-12 bg-success rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
-									<div>
-										<p className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Cá phiếu</p>
-										<p className="text-3xl font-black tracking-tighter">{(100 - cashWeight).toFixed(1)}%</p>
-										<p className="text-xs font-bold text-textSecondary mt-0.5">{formatVND(stockValue)}</p>
-									</div>
+							<div>
+								<p className="text-body-muted">Tiền mặt hiện tại</p>
+								<h3 className="text-h1 mt-1">{formatVND(balance)}</h3>
+								<div className="w-full bg-app-border rounded-full h-1.5 mt-4">
+									<div className="bg-primary h-1.5 rounded-full" style={{ width: '65%' }}></div>
 								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className="glass p-8 rounded-[40px] overflow-hidden border-faint">
-						<div className="flex justify-between items-center mb-10 px-2">
-							<h2 className="text-xl font-black tracking-tight uppercase tracking-[0.1em]">Lãi / Lỗ ròng</h2>
-							<button className="text-[9px] font-black text-primary uppercase tracking-[0.3em] bg-primary/5 px-5 py-2.5 rounded-2xl border border-primary/10 hover:bg-primary/10 transition-all active:scale-95">Xem chi tiết</button>
+					{/* Main Chart Section */}
+					<div className="card flex-1 flex flex-col min-h-[400px]">
+						<div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+							<div>
+								<h3 className="text-text-main dark:text-white text-lg font-bold">Hiệu suất danh mục</h3>
+								<p className="text-body-muted">Tăng trưởng theo thời gian</p>
+							</div>
+							<div className="flex bg-app-border p-1 rounded-lg">
+								{['1D', '1W', '1M', '1Y', 'All'].map((t) => (
+									<button
+										key={t}
+										className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${t === '1M' ? 'bg-surface-light dark:bg-surface-dark shadow-sm text-text-main dark:text-white' : 'text-text-muted hover:text-text-main dark:text-white'}`}
+									>
+										{t}
+									</button>
+								))}
+							</div>
 						</div>
-						<div className="overflow-x-auto custom-scrollbar scroll-smooth-touch">
-							<table className="w-full text-left min-w-[600px]">
+
+						<div className="relative flex-1 w-full h-full min-h-[300px]">
+							<svg className="w-full h-full absolute inset-0 text-primary" preserveAspectRatio="none" viewBox="0 0 100 40">
+								<defs>
+									<linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+										<stop offset="0%" stopColor="currentColor" stopOpacity="0.2"></stop>
+										<stop offset="100%" stopColor="currentColor" stopOpacity="0"></stop>
+									</linearGradient>
+								</defs>
+								<path d="M0 40 L0 30 C10 28 20 35 30 25 C40 15 50 20 60 10 C70 0 80 15 90 5 L100 8 L100 40 Z" fill="url(#chartGradient)"></path>
+								<path d="M0 30 C10 28 20 35 30 25 C40 15 50 20 60 10 C70 0 80 15 90 5 L100 8" fill="none" stroke="currentColor" strokeWidth="0.5" vectorEffect="non-scaling-stroke"></path>
+							</svg>
+
+							<div className="absolute top-[20%] left-[60%] flex flex-col items-center">
+								<div className="bg-app-text dark:bg-white text-white dark:text-text-main dark:text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg mb-1">{formatVND(totalAssets)}</div>
+								<div className="w-3 h-3 bg-primary rounded-full border-2 border-app-surface shadow-sm animate-pulse"></div>
+								<div className="w-px h-24 bg-app-border border-dashed border-l border-accent-gold/50"></div>
+							</div>
+
+							<div className="flex justify-between mt-4 text-[10px] font-bold text-text-muted uppercase tracking-tighter opacity-70 absolute bottom-0 w-full px-2">
+								<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* --- Right Column --- */}
+				<div className="lg:col-span-4 flex flex-col gap-6">
+
+					{/* Quick Trade Widget */}
+					<div className="card">
+						<div className="flex items-center gap-3 mb-6">
+							<div className="p-2 bg-primary rounded-lg text-text-main dark:text-white">
+								<span className="material-symbols-outlined">bolt</span>
+							</div>
+							<div>
+								<h3 className="text-text-main dark:text-white text-lg font-bold">Giao dịch nhanh</h3>
+								<p className="text-text-muted text-xs">Thực hiện ngay lập tức</p>
+							</div>
+						</div>
+
+						<div className="space-y-4">
+							<div className="grid grid-cols-2 gap-2 p-1 bg-app-border rounded-lg">
+								<button
+									onClick={() => setTradeType('buy')}
+									className={`py-2 text-sm font-bold rounded transition-all ${tradeType === 'buy' ? 'bg-primary text-text-main dark:text-white shadow-sm' : 'text-text-muted hover:text-text-main dark:text-white'}`}
+								>Mua</button>
+								<button
+									onClick={() => setTradeType('sell')}
+									className={`py-2 text-sm font-bold rounded transition-all ${tradeType === 'sell' ? 'bg-primary text-text-main dark:text-white shadow-sm' : 'text-text-muted hover:text-text-main dark:text-white'}`}
+								>Bán</button>
+							</div>
+
+							<div className="space-y-3">
+								<div className="space-y-1">
+									<span className="text-label ml-1">Mã cổ phiếu</span>
+									<div className="relative">
+										<input
+											type="text"
+											value={ticker}
+											onChange={(e) => setTicker(e.target.value.toUpperCase())}
+											className="input-field"
+											placeholder="HPG"
+										/>
+										<span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-accent-gold uppercase select-none">TICKER</span>
+									</div>
+								</div>
+
+								<div className="space-y-1">
+									<span className="text-label ml-1">Số lượng</span>
+									<input
+										type="number"
+										value={amount}
+										onChange={(e) => setAmount(e.target.value)}
+										className="input-field"
+										placeholder="0"
+									/>
+								</div>
+							</div>
+
+							<div className="pt-2">
+								<div className="flex justify-between text-xs text-text-muted mb-2">
+									<span>Giá thị trường</span>
+									<span className="font-bold text-text-main dark:text-white">---</span>
+								</div>
+								<div className="flex justify-between text-xs text-text-muted mb-4">
+									<span>Ước tính phí</span>
+									<span className="font-bold text-text-main dark:text-white">0 VND</span>
+								</div>
+								<button className="btn-dark w-full group">
+									Tiếp tục
+									<span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					{/* Empty State / Watchlist */}
+					<div className="card flex-1 flex flex-col">
+						<div className="flex justify-between items-center mb-4">
+							<h3 className="text-text-main dark:text-white text-lg font-bold">Danh mục nắm giữ</h3>
+							<button className="text-primary hover:text-accent-gold">
+								<span className="material-symbols-outlined">add_circle</span>
+							</button>
+						</div>
+						<div className="flex-1 flex flex-col items-center justify-center py-8 opacity-40">
+							<span className="material-symbols-outlined text-4xl mb-2 text-text-muted">inventory_2</span>
+							<p className="text-label">Trống</p>
+						</div>
+					</div>
+				</div>
+
+				{/* Recent Transactions Section */}
+				<div className="lg:col-span-12">
+					<div className="card">
+						<div className="flex justify-between items-center mb-6">
+							<h3 className="text-text-main dark:text-white text-lg font-bold">Giao dịch gần đây</h3>
+							<button className="text-sm font-semibold text-primary hover:text-accent-gold">Xem tất cả</button>
+						</div>
+						<div className="overflow-x-auto">
+							<table className="w-full text-left border-collapse">
 								<thead>
-									<tr className="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] border-b border-faint">
-										<th className="pb-6 pl-2">Mã cổ phiếu</th>
-										<th className="pb-6">Phân loại</th>
-										<th className="pb-6 text-right">Giá trị khớp</th>
-										<th className="pb-6 text-right">Lãi / Lỗ ròng</th>
+									<tr className="border-b border-border-light dark:border-border-dark">
+										<th className="pb-3 text-label">Giao dịch</th>
+										<th className="pb-3 text-label">Loại</th>
+										<th className="pb-3 text-label">Ngày</th>
+										<th className="pb-3 text-label text-right">Số tiền</th>
 									</tr>
 								</thead>
-								<tbody className="divide-y divide-faint">
-									{currentHistory.map((item, i) => (
-										<tr key={i} className="group hover:bg-muted transition-colors">
-											<td className="py-6 pl-2 font-black text-textPrimary text-lg tracking-tighter group-hover:text-primary transition-colors">{item.symbol}</td>
-											<td className="py-6">
-												{item.symbol === 'DEPOSIT' ? (
-													<span className="text-[9px] font-black px-3 py-1.5 rounded-xl border-2 tracking-widest text-primary border-primary/10 bg-primary/5">
-														NẠP VỐN
-													</span>
-												) : (
-													<span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border-2 tracking-widest ${item.side === 'BUY' ? 'text-success border-success/10 bg-success/5' : 'text-danger border-danger/10 bg-danger/5'}`}>
-														{item.side === 'BUY' ? 'MUA VÀO' : 'BÁN RA'}
-													</span>
-												)}
-											</td>
-											<td className="py-6 text-right font-black text-textPrimary/90">{formatVND(item.total)}</td>
-											<td className="py-6 text-right">
-												{item.symbol === 'DEPOSIT' ? (
-													<span className="opacity-10">————</span>
-												) : (
-													(() => {
-														const isBuy = item.side === 'BUY';
-														const holding = profile.holdings?.find(h => h.symbol === item.symbol);
-														const currentPrice = holding?.currentPrice || item.price;
-
-														// Nếu là lệnh BÁN: Lấy lãi lỗ thực tế đã chốt
-														// Nếu là lệnh MUA: Tính lãi lỗ tạm tính dựa trên giá hiện tại
-														const pnlValue = isBuy
-															? (currentPrice - item.price) * item.quantity
-															: item.pnl;
-
-														const pnlPct = isBuy
-															? ((currentPrice - item.price) / item.price) * 100
-															: (item.pnl / (item.price * item.quantity)) * 100;
-
-														const color = pnlValue > 0 ? 'text-success' : pnlValue < 0 ? 'text-danger' : 'text-textSecondary';
-
-														return (
-															<div className={`flex flex-col items-end ${color}`}>
-																<p className="font-black text-lg tracking-tighter">
-																	{(pnlValue >= 0 ? '+' : '') + formatVND(pnlValue)}
-																</p>
-																<p className="text-[10px] font-black underline decoration-1 underline-offset-4 tracking-widest opacity-80">
-																	{(pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2)}%
-																</p>
-															</div>
-														);
-													})()
-												)}
-											</td>
-										</tr>
-									))}
+								<tbody className="text-sm font-medium">
+									<tr>
+										<td colSpan="4" className="py-12 text-center text-text-muted text-[10px] font-bold uppercase tracking-widest opacity-50">
+											Không có giao dịch mới
+										</td>
+									</tr>
 								</tbody>
 							</table>
 						</div>
-
-						{/* Pagination Controls */}
-						{totalHistoryPages > 1 && (
-							<div className="flex items-center justify-center gap-2 mt-6">
-								<button
-									onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
-									disabled={historyPage === 1}
-									className="p-2 rounded-xl border border-faint hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-								>
-									<TrendingDown className="rotate-90" size={14} />
-								</button>
-								<div className="flex gap-1">
-									{Array.from({ length: totalHistoryPages }, (_, i) => i + 1).map(p => (
-										<button
-											key={p}
-											onClick={() => setHistoryPage(p)}
-											className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${historyPage === p ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-muted text-textSecondary'}`}
-										>
-											{p}
-										</button>
-									))}
-								</div>
-								<button
-									onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
-									disabled={historyPage === totalHistoryPages}
-									className="p-2 rounded-xl border border-faint hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-								>
-									<TrendingDown className="-rotate-90" size={14} />
-								</button>
-							</div>
-						)}
-					</div>
-				</div>
-
-				<div className="glass p-8 rounded-[40px] flex flex-col border-faint">
-					<h2 className="text-xl font-black tracking-tight mb-10 uppercase tracking-[0.1em]">HIỆU SUẤT DANH MỤC</h2>
-					<div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-						{profile.holdings && profile.holdings.length > 0 ? (
-							profile.holdings.map(item => (
-								<div key={item.symbol} className="flex justify-between items-center p-6 rounded-[28px] bg-muted border border-faint hover:border-primary/30 transition-all cursor-pointer group">
-									<div>
-										<p className="font-black text-textPrimary group-hover:text-primary transition-colors tracking-tight text-lg">{item.symbol}</p>
-										<p className="text-[10px] text-textSecondary font-black uppercase tracking-widest mt-0.5 opacity-60">
-											{item.quantity} CP · {formatVND(item.value)}
-										</p>
-									</div>
-									<div className={`text-right ${(item.pnl || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-										<p className="font-black tracking-tighter text-lg">
-											{((item.pnl || 0) >= 0 ? '+' : '') + formatVND(item.pnl || 0)}
-										</p>
-										<p className="text-[10px] font-black underline decoration-2 underline-offset-4 tracking-widest">
-											{((item.pnlPct || 0) >= 0 ? '+' : '') + (item.pnlPct || 0).toFixed(2)}%
-										</p>
-									</div>
-								</div>
-							))
-						) : (
-							<div className="flex flex-col items-center justify-center py-20 text-center opacity-30">
-								<div className="w-16 h-16 rounded-full border-2 border-dashed border-white/20 mb-4"></div>
-								<p className="text-[10px] font-black uppercase tracking-[0.2em]">Chưa có cổ phiếu</p>
-							</div>
-						)}
 					</div>
 				</div>
 			</div>
