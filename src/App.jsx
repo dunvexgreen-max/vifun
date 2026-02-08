@@ -33,28 +33,32 @@ function App() {
   const fetchProfile = async (email) => {
     try {
       const emailToFetch = email || userEmail;
+      let mergedProfile = {};
 
-      // 1. Fetch from Firestore (Primary Source)
-      const res = await dbService.getUserByEmail(emailToFetch);
+      // 1. Fetch Basic Metadata from Firestore
+      const fsRes = await dbService.getUserByEmail(emailToFetch);
+      if (fsRes.success && fsRes.data) {
+        mergedProfile = { ...fsRes.data };
+      }
 
-      if (res.success && res.data) {
-        setProfile(res.data);
+      // 2. Fetch Financial/Trading Data from GAS (Source of Truth for Money)
+      const gasData = await api.call('getProfile', { email: emailToFetch });
+
+      if (gasData && !gasData.error) {
+        mergedProfile = { ...mergedProfile, ...gasData };
+        setProfile(mergedProfile);
         setError(null);
 
-        // 2. Background Sync: Fetch Notifications & Settings from GAS (if needed)
+        // Background Syncs
         fetchNotifications(emailToFetch);
         fetchSettings(emailToFetch);
       } else {
-        // Fallback to GAS API if not in Firestore (Migration phase)
-        console.warn("User not found in Firestore, trying GAS API...");
-        const data = await api.call('getProfile', { email: emailToFetch });
-        if (data && !data.error) {
-          setProfile(data);
-          fetchNotifications(emailToFetch);
-          fetchSettings(emailToFetch);
+        // If GAS fails but Firestore succeeded, we show what we have but warn
+        if (mergedProfile.email) {
+          setProfile(mergedProfile);
+          console.warn("GAS API failed, showing cached Firestore profile.");
         } else {
-          console.error("Profile Error:", res.error || data?.error);
-          setError("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+          setError("Không thể kết nối đến máy chủ dữ liệu (GAS).");
         }
       }
     } catch (e) {
@@ -154,7 +158,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-white flex flex-col overflow-x-hidden transition-colors duration-500 font-sans">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-white flex flex-col overflow-x-hidden selection:bg-primary/30">
 
       {/* Top Navigation Bar */}
       <TopNavigation
@@ -167,7 +171,7 @@ function App() {
         onMarkRead={handleMarkRead}
       />
 
-      <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full transition-all duration-300">
+      <main className="flex-1 p-6 md:p-10 lg:p-12 max-w-[1800px] mx-auto w-full transition-all duration-300">
         {/* Content Area */}
         {renderContent()}
       </main>
